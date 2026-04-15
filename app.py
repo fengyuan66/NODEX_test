@@ -1,47 +1,49 @@
 import os
 import json
-import sqlite3
 import secrets
 import hashlib
 from datetime import datetime, timedelta
 from functools import wraps
-from flask import Flask, request, jsonify, Response, session, redirect, url_for
+
+from flask import Flask, request, jsonify, Response, session, redirect
 import requests
 
+from sqlalchemy import create_engine, text
+
+# ── Config ────────────────────────────────────────────────────────────────────
 GROQ_MODEL = "llama-3.1-8b-instant"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-DB_PATH = os.getenv("DB_PATH")
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=30)
 
-# ── DB ────────────────────────────────────────────────────────────────────────
+# ── DB Helpers ────────────────────────────────────────────────────────────────
 def get_db():
-    db = sqlite3.connect(DB_PATH)
-    db.row_factory = sqlite3.Row
-    return db
+    return engine.connect()
 
 def init_db():
-    db = get_db()
-    db.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        CREATE TABLE IF NOT EXISTS graphs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            data TEXT NOT NULL,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-    """)
-    db.commit()
-    db.close()
+    with engine.begin() as db:
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
+        db.execute(text("""
+            CREATE TABLE IF NOT EXISTS graphs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id),
+                data TEXT NOT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """))
 
 init_db()
 
@@ -53,7 +55,7 @@ def require_login(f):
     def wrapper(*args, **kwargs):
         if "user_id" not in session:
             return jsonify({"error": "unauthorized"}), 401
-        return f(*args, **kwargs)  # ← THIS is the key line
+        return f(*args, **kwargs)
     return wrapper
 
 # ── Auth routes ───────────────────────────────────────────────────────────────
@@ -202,43 +204,61 @@ def login_page():
         return redirect("/")
     return Response(LOGIN_HTML, mimetype="text/html")
 
+@app.route("/")
+def index():
+    if "user_id" not in session:
+        return redirect("/login")
+    return Response(INDEX_HTML, mimetype="text/html")
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
 @app.route("/auth/signup", methods=["POST"])
 def signup():
     d = request.get_json()
     email = (d.get("email") or "").strip().lower()
     pw = d.get("password") or ""
     remember = d.get("remember", True)
+
     if not email or not pw:
         return jsonify({"error": "Email and password required."})
     if len(pw) < 6:
         return jsonify({"error": "Password must be at least 6 characters."})
-    db = get_db()
+
     try:
-        db.execute("INSERT INTO users (email, password_hash) VALUES (?, ?)", (email, hash_password(pw)))
-        db.commit()
-        user = db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+        with engine.begin() as db:
+            db.execute(
+                text("INSERT INTO users (email, password_hash) VALUES (:email, :pw)"),
+                {"email": email, "pw": hash_password(pw)}
+            )
+            user = db.execute(
+                text("SELECT id FROM users WHERE email=:email"),
+                {"email": email}
+            ).fetchone()
+
         session.permanent = remember
-        session["user_id"] = user["id"]
+        session["user_id"] = user.id
         session["email"] = email
         return jsonify({"ok": True})
-    except sqlite3.IntegrityError:
+
+    except Exception:
         return jsonify({"error": "Email already registered."})
-    finally:
-        db.close()
 
 @app.route("/auth/login", methods=["POST"])
 def login():
     d = request.get_json()
     email = (d.get("email") or "").strip().lower()
     pw = d.get("password") or ""
-    remember = d.get("remember", True)
-    db = get_db()
-    user = db.execute("SELECT * FROM users WHERE email=? AND password_hash=?", (email, hash_password(pw))).fetchone()
-    db.close()
+
+    with get_db() as db:
+        user = db.execute(
+            text("SELECT * FROM users WHERE email=:email AND password_hash=:pw"),
+            {"email": email, "pw": hash_password(pw)}
+        ).fetchone()
+
     if not user:
         return jsonify({"error": "Invalid email or password."})
-    session.permanent = remember
-    session["user_id"] = user["id"]
+
+    session.permanent = d.get("remember", True)
+    session["user_id"] = user.id
     session["email"] = email
     return jsonify({"ok": True})
 
@@ -252,7 +272,6 @@ def me():
     if "user_id" not in session:
         return jsonify({"authenticated": False})
     return jsonify({"authenticated": True, "email": session.get("email")})
-
 # ── Main app ──────────────────────────────────────────────────────────────────
 INDEX_HTML = r"""<!DOCTYPE html>
 <html lang="en">
@@ -1567,115 +1586,100 @@ def index():
         return redirect("/login")
     return Response(INDEX_HTML, mimetype="text/html")
 
-# ── Groq ──────────────────────────────────────────────────────────────────────
+# ── Groq API ──────────────────────────────────────────────────────────────────
 def call_groq(messages):
-    r=requests.post(GROQ_URL,headers={"Authorization":f"Bearer {GROQ_API_KEY}","Content-Type":"application/json"},
-                    json={"model":GROQ_MODEL,"messages":messages},timeout=60)
+    r = requests.post(
+        GROQ_URL,
+        headers={
+            "Authorization": f"Bearer {GROQ_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        json={"model": GROQ_MODEL, "messages": messages},
+        timeout=60
+    )
     r.raise_for_status()
     return r.json()["choices"][0]["message"]["content"]
 
 def classify_with_groq(user_input):
-    sys=(f"Classify a message. Time: {datetime.now().strftime('%A %B %d %Y %H:%M PDT')}.\n"
-         "Return ONLY JSON. Types: timer(+seconds), ai_command(+command), question, text.\n"
-         'Examples: {"type":"timer","seconds":180} | {"type":"question"} | {"type":"text"}')
-    raw=call_groq([{"role":"system","content":sys},{"role":"user","content":user_input}])
+    sys = (
+        f"Classify a message. Time: {datetime.now()}.\n"
+        "Return ONLY JSON. Types: timer(+seconds), ai_command(+command), question, text."
+    )
+    raw = call_groq([
+        {"role": "system", "content": sys},
+        {"role": "user", "content": user_input}
+    ])
     try:
-        d=json.loads(raw)
-        if isinstance(d,dict) and "type" in d:return d
-    except:pass
-    return {"type":"question"}
+        return json.loads(raw)
+    except:
+        return {"type": "question"}
 
-def chat_with_groq(prompt,context):
-    sys=(f"Concise assistant. Time: {datetime.now().strftime('%A %B %d %Y %H:%M PDT')}.\n"
-         "1-3 sentences unless asked for more. Don't mention nodes/graphs/context/internal structure.")
-    msgs=[{"role":"system","content":sys}]
-    if context:msgs.append({"role":"user","content":"Context:\n"+context})
-    msgs.append({"role":"user","content":prompt})
+def chat_with_groq(prompt, context):
+    sys = "Concise assistant. 1-3 sentences."
+    msgs = [{"role": "system", "content": sys}]
+    if context:
+        msgs.append({"role": "user", "content": "Context:\n" + context})
+    msgs.append({"role": "user", "content": prompt})
     return call_groq(msgs)
 
-def suggest_with_groq(prompt,context):
-    sys=('Generate 3 follow-up suggestions. Return ONLY JSON: {"suggestions":["...","...","..."]}. No nodes/graphs.')
-    msgs=[{"role":"system","content":sys}]
-    if context:msgs.append({"role":"user","content":"Context:\n"+context})
-    msgs.append({"role":"user","content":prompt})
-    raw=call_groq(msgs)
+def suggest_with_groq(prompt, context):
+    sys = 'Generate 3 suggestions. Return ONLY JSON: {"suggestions":["..."]}.'
+    msgs = [{"role": "system", "content": sys}]
+    if context:
+        msgs.append({"role": "user", "content": "Context:\n" + context})
+    msgs.append({"role": "user", "content": prompt})
+    raw = call_groq(msgs)
     try:
-        d=json.loads(raw)
-        if isinstance(d,dict) and "suggestions" in d:return d["suggestions"]
-    except:pass
-    return []
+        return json.loads(raw)["suggestions"]
+    except:
+        return []
 
-def merge_with_groq(a,b):
-    return call_groq([{"role":"system","content":"Merge two texts into one concise clean version. Don't mention merging."},
-                      {"role":"user","content":"Text A:\n"+a},{"role":"user","content":"Text B:\n"+b}])
-
-def find_with_groq(query,node_descs):
-    sys='Graph search: find the single most relevant node. Return ONLY JSON: {"nodeId":<int>} or {"nodeId":null}.'
-    raw=call_groq([{"role":"system","content":sys},
-                   {"role":"user","content":f"Query: {query}\n\nNodes:\n{json.dumps(node_descs)}"}])
-    try:
-        clean=raw.strip().strip("```json").strip("```").strip()
-        d=json.loads(clean)
-        if isinstance(d,dict) and "nodeId" in d:return d["nodeId"]
-    except:pass
-    return None
-
-# ── Routes ────────────────────────────────────────────────────────────────────
-@app.route("/classify",methods=["POST"])
-def classify():
-    if "user_id" not in session:return jsonify({"error":"unauthorized"}),401
-    return jsonify(classify_with_groq(request.get_json().get("input","")))
-
-@app.route("/chat",methods=["POST"])
-def chat():
-    if "user_id" not in session:return jsonify({"error":"unauthorized"}),401
-    d=request.get_json()
-    return jsonify({"reply":chat_with_groq(d.get("prompt",""),d.get("context",""))})
-
-@app.route("/suggest",methods=["POST"])
-def suggest():
-    if "user_id" not in session:return jsonify({"suggestions":[]}),200
-    d=request.get_json()
-    return jsonify({"suggestions":suggest_with_groq(d.get("prompt",""),d.get("context",""))})
-
-@app.route("/merge",methods=["POST"])
-def merge():
-    if "user_id" not in session:return jsonify({"error":"unauthorized"}),401
-    d=request.get_json()
-    return jsonify({"merged":merge_with_groq(d.get("a",""),d.get("b",""))})
-
-@app.route("/find",methods=["POST"])
-def find():
-    if "user_id" not in session:return jsonify({"nodeId":None}),200
-    d=request.get_json()
-    return jsonify({"nodeId":find_with_groq(d.get("query",""),d.get("nodes",[]))})
-
-@app.route("/save",methods=["POST"])
+# ── Graph Routes ──────────────────────────────────────────────────────────────
+@app.route("/save", methods=["POST"])
+@require_login
 def save():
-    if "user_id" not in session:return jsonify({"error":"unauthorized"}),401
-    db=get_db()
-    try:
-        uid=session["user_id"]
-        data=json.dumps(request.get_json(),ensure_ascii=False)
-        existing=db.execute("SELECT id FROM graphs WHERE user_id=?",(uid,)).fetchone()
-        if existing:db.execute("UPDATE graphs SET data=?,updated_at=CURRENT_TIMESTAMP WHERE user_id=?",(data,uid))
-        else:db.execute("INSERT INTO graphs (user_id,data) VALUES (?,?)",(uid,data))
-        db.commit()
-    except Exception as e:print(e)
-    finally:db.close()
-    return jsonify({"ok":True})
+    uid = session["user_id"]
+    data = json.dumps(request.get_json(), ensure_ascii=False)
 
-@app.route("/load",methods=["GET"])
+    with engine.begin() as db:
+        existing = db.execute(
+            text("SELECT id FROM graphs WHERE user_id=:uid"),
+            {"uid": uid}
+        ).fetchone()
+
+        if existing:
+            db.execute(
+                text("""
+                    UPDATE graphs
+                    SET data=:data, updated_at=CURRENT_TIMESTAMP
+                    WHERE user_id=:uid
+                """),
+                {"data": data, "uid": uid}
+            )
+        else:
+            db.execute(
+                text("INSERT INTO graphs (user_id, data) VALUES (:uid, :data)"),
+                {"uid": uid, "data": data}
+            )
+
+    return jsonify({"ok": True})
+
+@app.route("/load", methods=["GET"])
+@require_login
 def load():
-    if "user_id" not in session:return jsonify({}),401
-    db=get_db()
-    try:
-        row=db.execute("SELECT data FROM graphs WHERE user_id=?",(session["user_id"],)).fetchone()
-        if not row:return jsonify({}),404
-        return jsonify(json.loads(row["data"]))
-    except:return jsonify({}),500
-    finally:db.close()
+    uid = session["user_id"]
+    with get_db() as db:
+        row = db.execute(
+            text("SELECT data FROM graphs WHERE user_id=:uid"),
+            {"uid": uid}
+        ).fetchone()
 
-if __name__=="__main__":
-    port=int(os.getenv("PORT","4000"))
-    app.run(host="0.0.0.0",port=port,debug=True)
+    if not row:
+        return jsonify({}), 404
+
+    return jsonify(json.loads(row.data))
+
+# ── Run ───────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", "4000"))
+    app.run(host="0.0.0.0", port=port)
