@@ -9,7 +9,7 @@ import requests
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-GROQ_MODEL = "llama-3.1-8b-instant"
+GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Secure your API key by pulling it from Render's environment!
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
