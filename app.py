@@ -12,7 +12,7 @@ from psycopg2.extras import RealDictCursor
 GROQ_MODEL = "llama-3.1-8b-instant"
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # Secure your API key by pulling it from Render's environment!
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 app = Flask(__name__)
