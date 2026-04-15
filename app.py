@@ -299,7 +299,7 @@ INDEX_HTML = r"""<!DOCTYPE html>
   --node-timer:#fbbf24;
 
   --ring-bg:#12121f;
-  --select-color:#a78bfa;
+  --select-color: #C79F00;
 }
 *{box-sizing:border-box;}
 body{margin:0;padding:0;background:var(--bg);color:var(--text);
