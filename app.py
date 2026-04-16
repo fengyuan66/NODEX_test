@@ -111,7 +111,8 @@ def init_db():
     conn.close()
 
 if DATABASE_URL:
-    init_db()
+    with app.app_context():
+        init_db()
 
 def hash_password(pw):
     return hashlib.sha256(pw.encode()).hexdigest()
