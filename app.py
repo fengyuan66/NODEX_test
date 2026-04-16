@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Flask, request, jsonify, Response, session, redirect, url_for
 import requests
 import psycopg2
+from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor
 
 GROQ_MODEL = "llama-3.1-8b-instant"
@@ -19,10 +20,34 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", secrets.token_hex(32))
 app.permanent_session_lifetime = timedelta(days=30)
 
-# ── DB (Updated for PostgreSQL) ───────────────────────────────────────────────
+# ── DB (Updated for PostgreSQL with Connection Pooling) ─────────────
+db_pool = None
+if DATABASE_URL:
+    try:
+        db_pool = ThreadedConnectionPool(1, 20, DATABASE_URL)
+    except Exception as e:
+        print("DB Pool error:", e)
+
+class PooledDB:
+    def __init__(self):
+        self.conn = db_pool.getconn()
+    def cursor(self, *args, **kwargs):
+        if 'cursor_factory' not in kwargs:
+            kwargs['cursor_factory'] = RealDictCursor
+        return self.conn.cursor(*args, **kwargs)
+    def commit(self):
+        self.conn.commit()
+    def rollback(self):
+        self.conn.rollback()
+    def close(self):
+        if db_pool and self.conn:
+            db_pool.putconn(self.conn)
+            self.conn = None
+
 def get_db():
-    conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-    return conn
+    if db_pool:
+        return PooledDB()
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
 def init_db():
     if not DATABASE_URL:
