@@ -311,15 +311,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   font-family:'JetBrains Mono',ui-monospace,monospace;
   overflow:hidden;}
 
-/* Grid background - Visible Grid Update */
-.bg-grid{
-  position:fixed;inset:0;pointer-events:none;z-index:0;
-  background-image:
-    linear-gradient(rgba(124,58,237,0.15) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(124,58,237,0.15) 1px,transparent 1px);
-  background-size:40px 40px;
-}
-
 #app{position:fixed;inset:0;display:flex;flex-direction:column;z-index:1;}
 
 /* Hide scrollbars */
@@ -341,19 +332,26 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 #canvas-wrapper{
   flex:1;overflow:scroll;position:relative;background:var(--canvas-bg);cursor:default;
 }
+
+/* Scalable Background Grid on the Canvas */
 #canvas{
   position:absolute;top:0;left:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 #link-layer{position:absolute;inset:0;pointer-events:auto;}
 
-/* Lasso Selection Box */
+/* Lasso Selection Box (Highly Visible) */
 #lasso-box {
   position: absolute;
-  border: 1px dashed var(--accent);
-  background: rgba(124,58,237,0.15);
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  background: rgba(124, 58, 237, 0.3);
   pointer-events: none;
-  z-index: 500;
+  z-index: 5000;
   display: none;
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
 }
 
 /* ── NODES ── */
@@ -364,7 +362,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   width:10px;height:10px;border-radius:999px;margin-bottom:3px;
   flex-shrink:0;transition:box-shadow .2s,transform .2s;
 }
-.node-text{white-space:pre-wrap;color:var(--text);transition:opacity .2s ease;}
+.node-text{position:relative; white-space:pre-wrap;color:var(--text);transition:opacity .2s ease;}
 
 /* Dim levels */
 .dim-0 .node-text{opacity:1;}.dim-1 .node-text{opacity:.75;}
@@ -427,8 +425,10 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 
 /* Bubbles */
 .bubble{
-  max-width:340px;max-height:200px;overflow-y:auto;padding:8px 10px;border-radius:12px;
+  max-width:none; max-height:none; min-width: 150px; min-height: 50px;
+  padding:8px 10px; border-radius:12px;
   border:1px solid var(--border2);background:var(--surface2);
+  position: relative; overflow-y: auto; overflow-wrap: anywhere;
 }
 .bubble-header{display:flex;justify-content:flex-end;margin-bottom:4px;}
 .copy-btn{
@@ -439,23 +439,29 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .copy-btn:hover{border-color:var(--accent);color:var(--text);}
 
 /* Note */
-.note-wrap{display:flex;flex-direction:column;gap:4px;}
+.note-wrap{display:flex;flex-direction:column;gap:4px; position:relative;}
 .note-title{
   background:transparent;border:none;border-bottom:1px solid var(--border2);
   color:var(--text);font-family:inherit;font-size:12px;font-weight:bold;
-  padding:2px 4px;width:240px;outline:none;
+  padding:2px 4px;width:100%;outline:none;
 }
 .note-title:focus{border-bottom-color:var(--accent);}
 .note-body{
-  width:240px;min-height:80px;max-height:180px;overflow-y:auto;resize:none;
+  min-width:150px;min-height:80px; max-width: none; max-height: none;
+  overflow-y:auto; overflow-wrap: anywhere; resize:none;
   background:var(--surface2);border:1px solid var(--border2);border-radius:10px;
   color:var(--text);font-family:inherit;font-size:12px;padding:8px 10px;outline:none;
 }
 .note-body:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
 
 /* Brainstorm Node UI */
-.brainstorm-wrap { display: flex; flex-direction: column; gap: 4px; width: 180px;}
-.brainstorm-input { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 6px 8px; font-size: 11px; outline: none; border-radius: 6px; font-family: inherit;}
+.brainstorm-wrap { display: flex; flex-direction: column; gap: 4px; width: 260px;}
+.brainstorm-input { 
+  background: var(--surface2); border: 1px solid var(--border2); 
+  color: var(--text); padding: 6px 8px; font-size: 11px; outline: none; 
+  border-radius: 6px; font-family: inherit; resize: vertical; 
+  min-height: 50px; max-height: 200px; width: 100%; white-space: pre-wrap;
+}
 .brainstorm-input:focus { border-color: var(--orange); }
 .brainstorm-run { background: var(--orange); color: white; font-weight: bold; font-family: inherit; border: none; padding: 6px 8px; font-size: 11px; cursor: pointer; border-radius: 6px; transition: opacity 0.2s; }
 .brainstorm-run:hover { opacity: 0.8; }
@@ -484,9 +490,11 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .group-label.collapsed-label{pointer-events:all;cursor:pointer;opacity:.85;}
 .group-resize-handle{
   position:absolute;width:12px;height:12px;
-  background:rgba(255,255,255,.2);border-radius:2px;
+  background:rgba(255,255,255,.3);border-radius:2px;
   cursor:se-resize;z-index:12;right:-6px;bottom:-6px;pointer-events:all;
+  transition: background 0.2s;
 }
+.group-resize-handle:hover{background:rgba(255,255,255,.8);}
 
 /* Context menu */
 #ctx-menu{
@@ -501,36 +509,49 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 
 /* Suggestions */
 #suggestions-bar{
-  display:flex;gap:8px;padding:6px 10px;border-top:1px solid var(--border);
-  background:var(--bg);align-items:center;min-height:38px;
+  position: fixed; bottom: 95px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; z-index: 999;
+  background: transparent; border: none; padding: 0; min-height: auto;
 }
 .suggestion-btn{
-  background:var(--surface);border:1px solid var(--border2);color:var(--muted2);
-  padding:4px 14px;border-radius:999px;font-family:inherit;font-size:11px;cursor:pointer;
-  flex:1;min-width:0;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  transition:all .15s;
+  background: rgba(20, 20, 28, 0.8); backdrop-filter: blur(8px);
+  border: 1px solid var(--border2); border-radius: 20px;
+  padding: 6px 14px; font-size: 11px; color:var(--text); cursor:pointer;
+  transition:all .15s; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .suggestion-btn:hover{border-color:var(--accent);color:var(--text);box-shadow:0 0 8px var(--accent-soft);}
 
-/* Input bar */
-#input-bar{
-  display:flex;gap:8px;padding:8px;border-top:1px solid var(--border);
-  background:var(--bg);position:relative;
+/* Modern Chat Input Box */
+#input-bar {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 12px; padding: 10px 14px;
+  background: rgba(20, 20, 28, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border2); border-radius: 30px;
+  width: 640px; max-width: 90vw;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(124,58,237,0.2);
+  z-index: 1000; align-items: flex-end;
 }
-#prompt{
-  flex:1;resize:none;background:var(--surface);border:1px solid var(--border2);
-  border-radius:6px;color:var(--text);padding:7px 10px;font-family:inherit;font-size:12px;
-  outline:none;transition:border-color .2s;
+#prompt {
+  flex: 1; resize: none; background: transparent; border: none;
+  color: var(--text); padding: 8px 4px; font-family: inherit; font-size: 13px;
+  outline: none; max-height: 120px; min-height: 20px; overflow-y: auto;
+  line-height: 1.4; margin-bottom: 2px;
 }
-#prompt:focus{border-color:var(--accent);}
-#send-btn,.top-btn{
+#prompt::placeholder { color: var(--muted); }
+#send-btn {
+  width: 36px; height: 36px; border-radius: 50%; padding: 0;
+  background: var(--text); color: var(--bg); border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: transform 0.2s, background 0.2s, box-shadow 0.2s;
+  font-size: 18px; font-weight: bold; flex-shrink: 0; margin-bottom: 2px;
+}
+#send-btn:hover { transform: scale(1.05); background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
+.top-btn{
   background:var(--surface);border:1px solid var(--border2);color:var(--muted2);
   padding:6px 12px;border-radius:6px;font-family:inherit;font-size:11px;cursor:pointer;
   transition:all .15s;white-space:nowrap;
 }
-#send-btn:hover,.top-btn:hover{border-color:var(--accent);color:var(--text);}
-#send-btn{color:var(--accent);border-color:var(--accent-soft);}
-#send-btn:hover{background:var(--accent-soft);box-shadow:0 0 12px var(--accent-soft);}
+.top-btn:hover{border-color:var(--accent);color:var(--text);}
 
 /* Zoom controls */
 #zoom-controls{
@@ -549,10 +570,10 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 
 /* Slash popup */
 #slash-popup{
-  position:absolute;bottom:100%;left:8px;
+  position:absolute; bottom:calc(100% + 12px); left:12px;
   background:var(--surface);border:1px solid var(--border2);
-  border-radius:10px;padding:4px;z-index:100;display:none;min-width:280px;
-  box-shadow:0 -8px 24px rgba(0,0,0,.7),0 0 0 1px rgba(124,58,237,0.1);
+  border-radius:12px;padding:6px;z-index:1000;display:none;min-width:280px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.8),0 0 0 1px rgba(124,58,237,0.1);
 }
 #slash-popup.visible{display:block;}
 .slash-item{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;}
@@ -563,7 +584,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 /* Color picker */
 #color-picker-popup{
   position:fixed;background:var(--surface);border:1px solid var(--border2);
-  border-radius:12px;padding:12px;z-index:200;display:none;
+  border-radius:12px;padding:12px;z-index:1500;display:none;
   box-shadow:0 8px 32px rgba(0,0,0,.8);flex-direction:column;gap:8px;min-width:210px;
 }
 #color-picker-popup.visible{display:flex;}
@@ -586,7 +607,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 
 /* Settings modal */
 #settings-modal{
-  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;
   display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);
 }
 #settings-modal.visible{display:flex;}
@@ -618,7 +639,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 </style>
 </head>
 <body>
-<div class="bg-grid"></div>
 <div id="app">
   <div id="top-bar">
     <button class="top-btn" id="settings-btn">⚙ Settings</button>
@@ -630,16 +650,16 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
     <div class="user-badge" id="user-badge">…</div>
   </div>
   <div id="canvas-wrapper">
-    <div id="lasso-box"></div>
     <div id="canvas">
+      <div id="lasso-box"></div>
       <svg id="link-layer"></svg>
     </div>
   </div>
   <div id="suggestions-bar"></div>
   <div id="input-bar">
     <div id="slash-popup"></div>
-    <textarea id="prompt" placeholder="Ask anything. Type / for commands." rows="1"></textarea>
-    <button id="send-btn">Send →</button>
+    <textarea id="prompt" placeholder="Ask anything. Type / for commands..." rows="1"></textarea>
+    <button id="send-btn" title="Send (Enter)">↑</button>
   </div>
 </div>
 
@@ -691,11 +711,12 @@ let nextNodeId=1, nextLinkId=1, nextGroupId=1;
 let draggingNode=null, dragOffset={x:0,y:0};
 let draggingGroup=null, groupDragOffset={x:0,y:0}, groupDragNodeOffsets=[];
 let resizingGroup=null, resizeStartX=0, resizeStartY=0, resizeStartW=0, resizeStartH=0;
+let resizingNode=null, resizingTarget=null;
 let mergeHintEl=null, mergeTargetNode=null;
 let groupAddHintEl=null, groupAddTarget=null;
 let lastNodeId=null, lastQuestionNodeId=null;
 let isPanning=false, panStartX=0, panStartY=0, panScrollX=0, panScrollY=0, panMoved=false;
-let isCtrlHeld=false, ctrlHighlightedNodes=[];
+let isCtrlHeld=false, isShiftHeld=false, ctrlHighlightedNodes=[];
 let undoStack=[], redoStack=[];
 const MAX_HISTORY=80;
 let slashActive=false, slashSelectedIndex=0;
@@ -731,6 +752,12 @@ const slashPopup=document.getElementById("slash-popup");
 const colorPickerPopup=document.getElementById("color-picker-popup");
 const ctxMenu=document.getElementById("ctx-menu");
 const lassoBox=document.getElementById("lasso-box");
+
+// Auto-resize prompt textarea
+promptEl.addEventListener("input", function() {
+  this.style.height = "auto";
+  this.style.height = (this.scrollHeight) + "px";
+});
 
 // ── User badge ────────────────────────────────────────────────────────────────
 fetch("/auth/me").then(r=>r.json()).then(d=>{
@@ -801,7 +828,7 @@ canvasWrapper.addEventListener("wheel",e=>{
   }
 },{passive:false});
 
-// ── Smart Recenter ────────────────────────────────────────────────────────────
+// ── Smart Recenter & Zoom to Group ────────────────────────────────────────────
 document.getElementById("recenter-btn").onclick=()=>smartRecenter();
 
 function smartRecenter(animate=true){
@@ -853,6 +880,31 @@ function smartRecenter(animate=true){
       behavior:animate?"smooth":"instant"
     });
   },30);
+}
+
+function zoomToGroup(gid, animate=true) {
+  const g = groups.find(x=>x.id===gid);
+  if(!g) return;
+  const bounds = getGroupBounds(g);
+  if(!bounds) return;
+  const padding = 100;
+  const cx = (bounds.minX + bounds.maxX) / 2;
+  const cy = (bounds.minY + bounds.maxY) / 2;
+  const w = bounds.maxX - bounds.minX + padding*2;
+  const h = bounds.maxY - bounds.minY + padding*2;
+
+  const scaleX = canvasWrapper.clientWidth / w;
+  const scaleY = canvasWrapper.clientHeight / h;
+  const fitScale = Math.min(Math.max(Math.min(scaleX, scaleY)*0.9, MIN_SCALE), MAX_SCALE);
+
+  applyZoom(fitScale, canvasWrapper.clientWidth/2, canvasWrapper.clientHeight/2);
+  setTimeout(()=>{
+    canvasWrapper.scrollTo({
+      left: cx*fitScale - canvasWrapper.clientWidth/2,
+      top: cy*fitScale - canvasWrapper.clientHeight/2,
+      behavior: animate ? "smooth" : "instant"
+    });
+  }, 30);
 }
 
 // ── Canvas coords ─────────────────────────────────────────────────────────────
@@ -923,6 +975,7 @@ function redo(){if(!redoStack.length)return;undoStack.push(captureSnapshot());re
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 const isMac=navigator.platform.toUpperCase().includes("MAC");
 document.addEventListener("keydown",e=>{
+  if(e.key==="Shift") isShiftHeld=true;
   const mod=isMac?e.metaKey:e.ctrlKey;
   if(e.ctrlKey||e.metaKey)isCtrlHeld=true;
   if(mod&&e.key==="z"&&!e.shiftKey){e.preventDefault();undo();return;}
@@ -932,9 +985,13 @@ document.addEventListener("keydown",e=>{
   if(!inInput){
     if((e.key==="l"||e.key==="L")&&!mod){e.preventDefault();linkSelectedNodes();return;}
     if((e.key==="s"||e.key==="S")&&!mod){e.preventDefault();splitSelectedLinks();return;}
+    if((e.key==="g"||e.key==="G")&&!mod){e.preventDefault(); triggerGroupUI(); return;}
   }
 });
-document.addEventListener("keyup",e=>{if(!e.ctrlKey&&!e.metaKey){isCtrlHeld=false;clearCtrlHighlights();}});
+document.addEventListener("keyup",e=>{
+  if(e.key==="Shift") isShiftHeld=false;
+  if(!e.ctrlKey&&!e.metaKey){isCtrlHeld=false;clearCtrlHighlights();}
+});
 
 // ── Ctrl highlight ────────────────────────────────────────────────────────────
 function getDirectNeighborAnswers(nodeId){
@@ -942,8 +999,25 @@ function getDirectNeighborAnswers(nodeId){
   links.forEach(l=>{if(l.sourceId===nodeId)nids.add(l.targetId);if(l.targetId===nodeId)nids.add(l.sourceId);});
   return nodes.filter(n=>nids.has(n.id)&&n.type==="answer");
 }
+function getTreeNodes(nodeId) {
+  let q = [nodeId];
+  let vis = new Set([nodeId]);
+  while(q.length) {
+    let curr = q.shift();
+    links.forEach(l => {
+      if (l.sourceId === curr && !vis.has(l.targetId)) { vis.add(l.targetId); q.push(l.targetId); }
+      if (l.targetId === curr && !vis.has(l.sourceId)) { vis.add(l.sourceId); q.push(l.sourceId); }
+    });
+  }
+  return nodes.filter(n => vis.has(n.id));
+}
 function clearCtrlHighlights(){canvas.querySelectorAll(".node.ctrl-highlight").forEach(el=>el.classList.remove("ctrl-highlight"));ctrlHighlightedNodes=[];}
 function applyCtrlHighlight(node){clearCtrlHighlights();ctrlHighlightedNodes=getDirectNeighborAnswers(node.id);ctrlHighlightedNodes.forEach(n=>{const el=getNodeEl(n.id);if(el)el.classList.add("ctrl-highlight");});}
+function applyTreeHighlight(node) {
+  clearCtrlHighlights();
+  ctrlHighlightedNodes = getTreeNodes(node.id);
+  ctrlHighlightedNodes.forEach(n => { const el = getNodeEl(n.id); if (el) el.classList.add("ctrl-highlight"); });
+}
 
 function linkSelectedNodes(){const sel=getSelectedNodes();if(sel.length<2)return;pushUndo();for(let i=0;i<sel.length-1;i++)addLink(sel[i].id,sel[i+1].id);redrawLinks();saveGraph();}
 function splitSelectedLinks(){const sel=getSelectedNodes();if(sel.length<2)return;pushUndo();const selIds=new Set(sel.map(n=>n.id));links=links.filter(l=>!(selIds.has(l.sourceId)&&selIds.has(l.targetId)));redrawLinks();saveGraph();}
@@ -1036,7 +1110,7 @@ function expandGroup(gid,skipSave){
   }
   redrawLinks();redrawGroups();
   if(!skipSave)saveGraph();
-  setTimeout(()=>smartRecenter(true),120);
+  zoomToGroup(gid, true);
 }
 
 function redrawGroups(){
@@ -1154,14 +1228,23 @@ document.getElementById("color-confirm-btn").onclick=()=>{
   colorPickerPopup.classList.remove("visible");document.getElementById("group-name-input").value="";
 };
 document.getElementById("color-cancel-btn").onclick=()=>{colorPickerPopup.classList.remove("visible");editingGroupId=null;document.getElementById("color-confirm-btn").textContent="Create Group";};
-document.getElementById("group-btn").onclick=()=>{
+
+function triggerGroupUI() {
   const sel=getSelectedNodes();if(!sel.length){alert("Select at least one node to group.");return;}
   editingGroupId=null;document.getElementById("color-confirm-btn").textContent="Create Group";
   buildColorSwatches();
-  const r=document.getElementById("group-btn").getBoundingClientRect();
-  colorPickerPopup.style.cssText=`top:${r.bottom+6}px;left:${r.left}px;`;
+  
+  // Try placing it near the selected nodes or a safe spot
+  let minX=Infinity, minY=Infinity;
+  sel.forEach(n=>{minX=Math.min(minX,n.x); minY=Math.min(minY,n.y);});
+  const rect=canvasWrapper.getBoundingClientRect();
+  const screenX = (minX*currentScale) - canvasWrapper.scrollLeft + rect.left;
+  const screenY = (minY*currentScale) - canvasWrapper.scrollTop + rect.top - 120;
+  
+  colorPickerPopup.style.cssText=`top:${Math.max(20, screenY)}px;left:${Math.max(20, screenX)}px;`;
   colorPickerPopup.classList.add("visible");
-};
+}
+document.getElementById("group-btn").onclick=triggerGroupUI;
 
 // ── Brainstorm ────────────────────────────────────────────────────────────────
 document.getElementById("brainstorm-btn").onclick=()=>{
@@ -1246,7 +1329,7 @@ function createNodeElement(node){
     textWrap.appendChild(wrap);
   } else if(node.type==="brainstorm"){
     const wrap=document.createElement("div");wrap.className="brainstorm-wrap";
-    const input=document.createElement("input");input.className="brainstorm-input";
+    const input=document.createElement("textarea");input.className="brainstorm-input";
     input.placeholder="Topic...";input.value=node.meta.topic||"";
     input.addEventListener("input",e=>{e.stopPropagation();node.meta.topic=input.value;saveGraph();});
     input.addEventListener("mousedown",e=>{if(document.activeElement===input)e.stopPropagation();});
@@ -1262,11 +1345,11 @@ function createNodeElement(node){
         const r=await fetch("/brainstorm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:input.value})});
         const d=await r.json();
         const ideas=d.nodes||[];
-        let offset=0;
-        ideas.forEach(idea=>{
-          const n=addNode(idea,"answer",node.x+240,node.y+offset);
+        const total = ideas.length;
+        const startY = node.y - ((total-1) * 70) / 2; // Center vertically for branching
+        ideas.forEach((idea, i)=>{
+          const n=addNode(idea,"answer",node.x+320, startY + i*100);
           addLink(node.id,n.id);
-          offset+=80;
         });
         saveGraph();
       } catch(err){}
@@ -1278,6 +1361,28 @@ function createNodeElement(node){
     textWrap.textContent=node.text;
   }
 
+  // Inject resize handle for answers and notes
+  if(node.type==="answer" || node.type==="note") {
+    const rh = document.createElement("div");
+    rh.className = "group-resize-handle";
+    rh.style.background = "rgba(255,255,255,0.7)";
+    rh.style.zIndex = 20;
+    
+    let targetEl = node.type==="answer" ? textWrap.querySelector('.bubble') : textWrap.querySelector('.note-body');
+    if(node.meta.w) targetEl.style.width = node.meta.w + "px";
+    if(node.meta.h) targetEl.style.height = node.meta.h + "px";
+
+    rh.addEventListener("mousedown", e => {
+      e.stopPropagation(); e.preventDefault();
+      resizingNode = node;
+      resizingTarget = targetEl;
+      resizeStartX = e.clientX; resizeStartY = e.clientY;
+      resizeStartW = targetEl.offsetWidth; resizeStartH = targetEl.offsetHeight;
+    });
+    
+    textWrap.appendChild(rh);
+  }
+
   el.appendChild(circle);el.appendChild(textWrap);
 
   if(node.groupId!==undefined){
@@ -1285,12 +1390,16 @@ function createNodeElement(node){
     if(g){const badge=document.createElement("div");badge.className="group-badge";badge.style.background=g.color;el.appendChild(badge);}
   }
 
-  el.addEventListener("mouseenter",()=>{if(isCtrlHeld)applyCtrlHighlight(node);});
+  el.addEventListener("mouseenter",()=>{
+    if(isCtrlHeld && isShiftHeld) applyTreeHighlight(node);
+    else if(isCtrlHeld) applyCtrlHighlight(node);
+  });
   el.addEventListener("mouseleave",()=>{if(isCtrlHeld)clearCtrlHighlights();});
 
   el.addEventListener("mousedown",e=>{
     if(e.shiftKey)return;
     if((node.type==="note"||node.type==="brainstorm")&&(e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT")){if(document.activeElement===e.target){return;}}
+    if(e.target.classList.contains("group-resize-handle")) return; // Don't drag node if resizing
     e.stopPropagation();
     draggingNode=node;
     const cc=clientToCanvas(e.clientX,e.clientY);
@@ -1301,23 +1410,10 @@ function createNodeElement(node){
     e.stopPropagation();
     if(e.shiftKey && (e.ctrlKey || e.metaKey)){
       e.preventDefault();
-      // Tree Branch Selection (Depth First Search on connected nodes)
-      let q = [node.id];
-      let vis = new Set([node.id]);
-      while(q.length) {
-        let curr = q.shift();
-        links.forEach(l => {
-          if (l.sourceId === curr && !vis.has(l.targetId)) { vis.add(l.targetId); q.push(l.targetId); }
-          if (l.targetId === curr && !vis.has(l.sourceId)) { vis.add(l.sourceId); q.push(l.sourceId); }
-        });
-      }
-      vis.forEach(id => {
-        let n = nodes.find(x=>x.id===id);
-        if(n) {
-          n.selected = true;
-          let nel = getNodeEl(id);
-          if(nel) nel.classList.add("selected");
-        }
+      getTreeNodes(node.id).forEach(n => {
+        n.selected = true;
+        let nel = getNodeEl(n.id);
+        if(nel) nel.classList.add("selected");
       });
       hasActiveContext=true;
       updateSuggestionsDebounced();
@@ -1405,8 +1501,20 @@ function ensureGroupHint(){if(!groupAddHintEl){groupAddHintEl=document.createEle
 function showGroupAddHint(x,y,name){ensureGroupHint();groupAddHintEl.textContent="Add to "+name+"?";groupAddHintEl.style.cssText=`left:${x}px;top:${y}px;display:block;`;}
 function hideGroupAddHint(){if(groupAddHintEl)groupAddHintEl.style.display="none";groupAddTarget=null;}
 
-// ── Drag ──────────────────────────────────────────────────────────────────────
+// ── Drag & Resize ──────────────────────────────────────────────────────────────
 document.addEventListener("mousemove",e=>{
+  if(resizingNode && resizingTarget){
+    const dx = (e.clientX - resizeStartX) / currentScale;
+    const dy = (e.clientY - resizeStartY) / currentScale;
+    const newW = Math.max(120, resizeStartW + dx);
+    const newH = Math.max(50, resizeStartH + dy);
+    resizingTarget.style.width = newW + "px";
+    resizingTarget.style.height = newH + "px";
+    resizingNode.meta.w = newW;
+    resizingNode.meta.h = newH;
+    redrawLinks();
+    return;
+  }
   if(resizingGroup){
     const dx=(e.clientX-resizeStartX)/currentScale,dy=(e.clientY-resizeStartY)/currentScale;
     resizingGroup.collapsedW=Math.max(80,resizeStartW+dx);
@@ -1447,6 +1555,7 @@ document.addEventListener("mousemove",e=>{
 });
 
 document.addEventListener("mouseup",async e=>{
+  if(resizingNode) { resizingNode=null; resizingTarget=null; saveGraph(); return; }
   if(resizingGroup){resizingGroup=null;saveGraph();return;}
   if(draggingGroup){draggingGroup=null;groupDragNodeOffsets=[];saveGraph();return;}
   if(!draggingNode)return;
@@ -1480,8 +1589,8 @@ canvasWrapper.addEventListener("mousedown",e=>{
     const cc=clientToCanvas(e.clientX, e.clientY);
     lassoStartX=cc.x;
     lassoStartY=cc.y;
-    lassoBox.style.left=lassoStartX+"px";
-    lassoBox.style.top=lassoStartY+"px";
+    lassoBox.style.left=(lassoStartX*currentScale)+"px";
+    lassoBox.style.top=(lassoStartY*currentScale)+"px";
     lassoBox.style.width="0px";
     lassoBox.style.height="0px";
     lassoBox.style.display="block";
@@ -1497,6 +1606,7 @@ canvasWrapper.addEventListener("mousemove",e=>{
     const y=Math.min(cc.y, lassoStartY);
     const w=Math.abs(cc.x - lassoStartX);
     const h=Math.abs(cc.y - lassoStartY);
+    
     lassoBox.style.left=x+"px";
     lassoBox.style.top=y+"px";
     lassoBox.style.width=w+"px";
@@ -1612,7 +1722,7 @@ promptEl.addEventListener("keydown",e=>{
     if(e.key==="Enter"){const item=slashPopup.querySelector(".slash-item.active");if(item){item.click();e.preventDefault();return;}}
     if(e.key==="Escape"){hideSlashPopup();return;}
   }
-  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendPrompt();}
+  if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendPrompt(); promptEl.style.height = "auto"; }
 });
 
 // ── /find ─────────────────────────────────────────────────────────────────────
@@ -1672,7 +1782,7 @@ async function updateSuggestions(){
 // ── Save / Load ───────────────────────────────────────────────────────────────
 function saveGraph(){
   fetch("/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
-    nodes:nodes.map(n=>({id:n.id,x:n.x,y:n.y,type:n.type,text:n.text,dim:n.dim||0,meta:{topic:n.meta.topic||"",seconds:n.meta.seconds||0,label:n.meta.label||"",title:n.meta.title||""},completed:!!n.completed,groupId:n.groupId})),
+    nodes:nodes.map(n=>({id:n.id,x:n.x,y:n.y,type:n.type,text:n.text,dim:n.dim||0,meta:{topic:n.meta.topic||"",seconds:n.meta.seconds||0,label:n.meta.label||"",title:n.meta.title||"",w:n.meta.w||null,h:n.meta.h||null},completed:!!n.completed,groupId:n.groupId})),
     links:links.map(l=>({id:l.id,sourceId:l.sourceId,targetId:l.targetId})),
     groups:groups.map(g=>({id:g.id,name:g.name,color:g.color,nodeIds:[...g.nodeIds],collapsed:!!g.collapsed,collapsedW:g.collapsedW||160,collapsedH:g.collapsedH||60,collapsedX:g.collapsedX,collapsedY:g.collapsedY,savedPositions:g.savedPositions})),
     nextNodeId,nextLinkId,nextGroupId
@@ -1814,8 +1924,9 @@ def brainstorm():
     if "user_id" not in session: return jsonify({"error":"unauthorized"}),401
     d = request.get_json()
     topic = d.get("topic", "")
-    sys = ('You are a brainstorm assistant. Analyze the topic and return exactly 3 to 4 short, '
-           'highly related subtopics. Return ONLY a valid JSON array of strings. Do not include markdown formatting. '
+    sys = ('You are a brainstorm assistant. Analyze the topic and branch out conceptually. '
+           'Generate necessary, highly related subtopics. The number of subtopics should fit the complexity '
+           'of the topic (between 2 and 8). Return ONLY a valid JSON array of strings. Do not include markdown formatting. '
            'Example output: ["Subtopic A", "Subtopic B", "Subtopic C"]')
     try:
         raw = call_groq([{"role": "system", "content": sys}, {"role": "user", "content": topic}])
