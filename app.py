@@ -1601,14 +1601,19 @@ document.getElementById("dash-btn").onclick = async () => {
       d.shared_with_me.forEach(item => {
         const row = document.createElement("div");
         row.className = "dash-item";
-        row.innerHTML = `<div><strong>${item.owner_email}'s Graph</strong><br><span style="color:var(--muted2);font-size:10px;">Added: ${item.added_at.split('T')[0]}</span></div><span style="color:var(--accent);">Go →</span>`;
+        // Safe split without crashing if date is missing
+        const dateStr = item.added_at ? item.added_at.split('T')[0] : 'Recently';
+        row.innerHTML = `<div><strong>${item.owner_email}'s Graph</strong><br><span style="color:var(--muted2);font-size:10px;">Added: ${dateStr}</span></div><span style="color:var(--accent);">Go →</span>`;
         row.onclick = () => window.location.href = "/shared/" + item.share_id;
         list.appendChild(row);
       });
     } else {
       list.innerHTML = "<div style='color:var(--muted2); font-size:11px; padding:12px;'>No graphs shared with you yet.</div>";
     }
-  } catch(e) { list.innerHTML = "Error loading."; }
+  } catch(e) { 
+    list.innerHTML = "Error loading."; 
+    console.error("Dashboard error:", e);
+  }
 };
 
 // ── Collaboration (WebSockets) ────────────────────────────────────────────────
@@ -2050,14 +2055,25 @@ def get_dashboard():
         uid = session["user_id"]
         # Get canvases shared with this user
         cursor.execute("""
-            SELECT g.share_id, g.updated_at, u.email as owner_email
+            SELECT g.share_id, gc.added_at, g.updated_at, u.email as owner_email
             FROM graph_collaborators gc
             JOIN graphs g ON gc.graph_id = g.id
             JOIN users u ON g.user_id = u.id
             WHERE gc.user_id = %s
         """, (uid,))
         shared_with_me = cursor.fetchall()
+        
+        # FIX: Format datetime objects to strings before converting to JSON!
+        for row in shared_with_me:
+            if row.get("added_at"):
+                row["added_at"] = row["added_at"].isoformat()
+            if row.get("updated_at"):
+                row["updated_at"] = row["updated_at"].isoformat()
+                
         return jsonify({"shared_with_me": shared_with_me})
+    except Exception as e:
+        print("Dashboard error:", e)
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         conn.close()
