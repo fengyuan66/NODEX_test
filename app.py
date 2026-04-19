@@ -91,7 +91,7 @@ LOGIN_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>SecondBrain — Sign In</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
@@ -303,8 +303,10 @@ INDEX_HTML = r"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>SecondBrain</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&display=swap');
 :root{
@@ -350,7 +352,7 @@ INDEX_HTML = r"""<!DOCTYPE html>
 *{box-sizing:border-box;}
 body{margin:0;padding:0;background:var(--bg);color:var(--text);
   font-family:'JetBrains Mono',ui-monospace,monospace;
-  overflow:hidden;}
+  overflow:hidden; touch-action: none;} /* touch-action none ensures custom gesture handling */
 
 #app{position:fixed;inset:0;display:flex;flex-direction:column;z-index:1;}
 
@@ -361,7 +363,9 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 #top-bar{
   position:fixed;top:12px;left:12px;z-index:200;
   display:flex;gap:6px;align-items:center;
+  flex-wrap: wrap; pointer-events: none;
 }
+#top-bar > * { pointer-events: auto; }
 
 .board-title-input {
   background: transparent; border: none; color: var(--text);
@@ -408,6 +412,19 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   display: none;
   box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
 }
+
+/* ── Markdown Styles ── */
+.markdown-body { font-family: inherit; font-size: inherit; line-height: 1.4; }
+.markdown-body p { margin: 0 0 8px 0; }
+.markdown-body p:last-child { margin: 0; }
+.markdown-body strong { font-weight: bold; color: var(--accent); }
+.markdown-body em { font-style: italic; }
+.markdown-body code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
+
+/* Thinking Animation */
+@keyframes pulse-think { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px var(--accent-glow); } 100% { opacity: 0.5; } }
+.thinking-spinner { animation: pulse-think 1.5s infinite ease-in-out; font-style: italic; color: var(--accent); font-weight: bold; }
+.is-thinking .bubble { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-soft); }
 
 /* ── NODES ── */
 .node{position:absolute;cursor:grab;user-select:none;font-size:12px;line-height:1.3;z-index:10;}
@@ -532,7 +549,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   background: transparent; border: none; padding: 0; min-height: auto;
 }
 .suggestion-btn{
-  background: var(--glass-bg); backdrop-filter: blur(12px);
+  background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
   padding: 6px 14px; font-size: 11px; color:var(--text); cursor:pointer;
   transition:all .15s; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -630,7 +647,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 /* Modals */
 .modal-overlay {
   position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;
-  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
 }
 .modal-overlay.visible{display:flex;}
 .modal-box {
@@ -638,7 +655,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   padding:24px;min-width:320px;display:flex;flex-direction:column;gap:16px;
   box-shadow:0 0 60px rgba(124,58,237,0.15); max-width: 90vw;
 }
-.modal-title{font-size:14px;font-weight:bold;color:var(--text);}
+.modal-title{font-size:14px;font-weight:bold;color:var(--text); display:flex; justify-content:space-between;}
 .settings-row{display:flex;flex-direction:column;gap:6px;}
 .settings-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;}
 .settings-select, .modal-input{
@@ -813,7 +830,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 
 <div id="dash-modal" class="modal-overlay">
   <div class="modal-box" style="width: 500px; max-width: 90vw;">
-    <div class="modal-title">Canvas Dashboard</div>
+    <div class="modal-title"><span>Canvas Dashboard</span> <a href="/auth/logout" style="font-size:12px; color:var(--red); text-decoration:none; display:flex; align-items:center;">🚪 Sign Out</a></div>
     
     <div class="settings-row">
       <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -929,7 +946,7 @@ fetch("/auth/me").then(r=>r.json()).then(d=>{
   const badge=document.getElementById("user-badge");
   if(d.authenticated){
     currentUserEmail = d.email;
-    badge.innerHTML=d.email+' · <a href="/auth/logout">Sign out</a>';
+    badge.innerHTML=d.email;
   } else {
     badge.innerHTML='<a href="/login">Sign in</a>';
   }
@@ -1133,9 +1150,17 @@ document.addEventListener("keydown",e=>{
   if(e.ctrlKey||e.metaKey)isCtrlHeld=true;
   if(mod&&e.key==="z"&&!e.shiftKey){e.preventDefault();undo();return;}
   if(mod&&(e.key==="y"||(e.key==="z"&&e.shiftKey))){e.preventDefault();redo();return;}
+  
   const active=document.activeElement;
   const inInput=active===promptEl||active.tagName==="INPUT"||active.tagName==="TEXTAREA";
+  
   if(!inInput){
+    if(e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        const sel = getSelectedNodes();
+        if(sel.length > 0) { sel.forEach(n => deleteNode(n.id)); }
+        return;
+    }
     if((e.key==="l"||e.key==="L")&&!mod){e.preventDefault();linkSelectedNodes();return;}
     if((e.key==="s"||e.key==="S")&&!mod){e.preventDefault();splitSelectedLinks();return;}
     if((e.key==="g"||e.key==="G")&&!mod){e.preventDefault(); triggerGroupUI(); return;}
@@ -1338,7 +1363,14 @@ function buildCtxMenu(type, x, y) {
     
     const delNodeBtn = document.getElementById("ctx-delete-node");
     if(delNodeBtn) delNodeBtn.onclick = () => {
-        if(ctxTargetNodeId !== null) deleteNode(ctxTargetNodeId);
+        if(ctxTargetNodeId !== null) {
+            const target = nodes.find(n => n.id === ctxTargetNodeId);
+            if(target && target.selected) {
+                getSelectedNodes().forEach(n => deleteNode(n.id));
+            } else {
+                deleteNode(ctxTargetNodeId);
+            }
+        }
         ctxMenu.classList.remove("visible");
     };
 }
@@ -1408,7 +1440,10 @@ function updateNodeTextDOM(node) {
   const el = getNodeEl(node.id); if(!el) return;
   if (node.type === "answer") {
     const b = el.querySelector(".bubble div:last-child");
-    if(b && document.activeElement !== b) b.textContent = node.text;
+    if(b && document.activeElement !== b) {
+        if(el.classList.contains("is-thinking")) b.innerHTML = '<div class="thinking-spinner">Thinking...</div>';
+        else b.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
+    }
   } else if (node.type === "note") {
     const b = el.querySelector(".note-body");
     if(b && document.activeElement !== b) b.value = node.text;
@@ -1419,10 +1454,10 @@ function updateNodeTextDOM(node) {
     if(i && document.activeElement !== i) i.value = node.meta.topic || "";
   } else if (node.type === "question" || node.type === "text") {
     const box = el.querySelector(".content-box");
-    if (box) box.textContent = node.text;
+    if (box) box.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
     else {
         const t = el.querySelector(".node-text");
-        if(t) t.textContent = node.text;
+        if(t) t.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
     }
   } else {
     const t = el.querySelector(".node-text");
@@ -1461,7 +1496,9 @@ function createNodeElement(node){
     const bubble=document.createElement("div");bubble.className="bubble"; const header=document.createElement("div");header.className="bubble-header";
     const copyBtn=document.createElement("button");copyBtn.className="copy-btn";copyBtn.textContent="Copy";
     copyBtn.onclick=e=>{e.stopPropagation();navigator.clipboard.writeText(node.text||"").catch(()=>{});}; header.appendChild(copyBtn);
-    const body=document.createElement("div");body.textContent=node.text;
+    const body=document.createElement("div");
+    if(el.classList.contains("is-thinking")) body.innerHTML = '<div class="thinking-spinner">Thinking...</div>';
+    else body.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
     bubble.appendChild(header);bubble.appendChild(body);
     bubble.addEventListener("scroll",()=>{if(bubble.scrollTop+bubble.clientHeight>=bubble.scrollHeight-2){node.completed=true;el.classList.add("completed");saveGraph();}}); textWrap.appendChild(bubble);
   } else if(node.type==="timer"){ textWrap.appendChild(createTimerContent(node));
@@ -1485,9 +1522,15 @@ function createNodeElement(node){
     const runBtn=document.createElement("button");runBtn.className="brainstorm-run";runBtn.textContent="Run";
     runBtn.onclick=async (e)=>{
       e.stopPropagation(); if(!input.value.trim())return; runBtn.textContent="Running...";
+      
+      const thinkNode = addNode("", "answer", node.x + 340, node.y);
+      const tEl = getNodeEl(thinkNode.id); if(tEl) tEl.classList.add("is-thinking");
+      updateNodeTextDOM(thinkNode); addLink(node.id, thinkNode.id);
+
       try {
         const r=await fetch("/brainstorm",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({topic:input.value})});
         const d=await r.json(); 
+        deleteNode(thinkNode.id);
         if (d.tree && d.tree.children) {
             const count = d.tree.children.length;
             const spacingY = 160;
@@ -1497,13 +1540,13 @@ function createNodeElement(node){
             });
             saveGraph();
         }
-      } catch(err){}
+      } catch(err){ deleteNode(thinkNode.id); }
       runBtn.textContent="Run";
     };
     wrap.appendChild(input);wrap.appendChild(runBtn); textWrap.appendChild(wrap);
   } else { 
     // Expandable content box for standard questions/text
-    const box = document.createElement("div"); box.className = "content-box"; box.textContent = node.text;
+    const box = document.createElement("div"); box.className = "content-box"; box.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
     const exp = document.createElement("button"); exp.className = "expand-btn"; exp.textContent = "Show more";
     textWrap.appendChild(box); textWrap.appendChild(exp);
     
@@ -1534,6 +1577,7 @@ function createNodeElement(node){
   el.addEventListener("mouseenter",()=>{ if(isCtrlHeld && isShiftHeld) applyTreeHighlight(node); else if(isCtrlHeld) applyCtrlHighlight(node); });
   el.addEventListener("mouseleave",()=>{if(isCtrlHeld)clearCtrlHighlights();});
 
+  // Mouse Drag / Interactions
   el.addEventListener("mousedown",e=>{
     if(e.shiftKey)return;
     if((node.type==="note"||node.type==="brainstorm")&&(e.target.tagName==="TEXTAREA"||e.target.tagName==="INPUT")){if(document.activeElement===e.target)return;}
@@ -1551,10 +1595,40 @@ function createNodeElement(node){
   el.addEventListener("click",e=>{
     e.stopPropagation();
     if(e.shiftKey && (e.ctrlKey || e.metaKey)){ e.preventDefault(); getTreeNodes(node.id).forEach(n => { n.selected = true; let nel = getNodeEl(n.id); if(nel) nel.classList.add("selected"); }); hasActiveContext=true; updateSuggestionsDebounced(); return; }
-    if(e.shiftKey){deleteNode(node.id);return;}
+    if(e.shiftKey){
+        if(node.selected) { getSelectedNodes().forEach(n => deleteNode(n.id)); } else { deleteNode(node.id); }
+        return;
+    }
     if(e.ctrlKey||e.metaKey){ e.preventDefault(); [node,...ctrlHighlightedNodes].forEach(n=>{n.selected=true;const nel=getNodeEl(n.id);if(nel)nel.classList.add("selected");}); hasActiveContext=true; updateSuggestionsDebounced();return; }
     pushUndo(); node.selected=!node.selected; el.classList.toggle("selected",node.selected); hasActiveContext=nodes.some(n=>n.selected); updateSuggestionsDebounced();
   });
+
+  // Touch Interactions
+  let touchTimer = null;
+  el.addEventListener("touchstart", e => {
+      if(e.touches.length > 1) return;
+      if(["TEXTAREA", "INPUT", "BUTTON"].includes(e.target.tagName)) return;
+      
+      touchTimer = setTimeout(() => {
+          touchTimer = null;
+          ctxTargetNodeId = node.id; ctxTargetGroupId = null;
+          buildCtxMenu("node", e.touches[0].clientX, e.touches[0].clientY);
+          if(navigator.vibrate) navigator.vibrate(50);
+      }, 500);
+
+      draggingNode = node;
+      const cc = clientToCanvas(e.touches[0].clientX, e.touches[0].clientY);
+      dragOffset = {x: cc.x - node.x, y: cc.y - node.y};
+  }, {passive: true});
+
+  el.addEventListener("touchmove", e => {
+      if(touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+  }, {passive: true});
+
+  el.addEventListener("touchend", e => {
+      if(touchTimer) { clearTimeout(touchTimer); touchTimer = null; }
+  }, {passive: true});
+
   canvas.appendChild(el); return el;
 }
 
@@ -1598,7 +1672,7 @@ function ensureGroupHint(){if(!groupAddHintEl){groupAddHintEl=document.createEle
 function showGroupAddHint(x,y,name){ensureGroupHint();groupAddHintEl.textContent="Add to "+name+"?";groupAddHintEl.style.cssText=`left:${x}px;top:${y}px;display:block;`;}
 function hideGroupAddHint(){if(groupAddHintEl)groupAddHintEl.style.display="none";groupAddTarget=null;}
 
-// Drag & Resize
+// Drag & Resize (Mouse & Touch)
 document.addEventListener("mousemove",e=>{
   if(resizingNode && resizingTarget){
     const dx = (e.clientX - resizeStartX) / currentScale, dy = (e.clientY - resizeStartY) / currentScale;
@@ -1643,6 +1717,18 @@ document.addEventListener("mousemove",e=>{
   }
 });
 
+document.addEventListener("touchmove", e => {
+  if(draggingNode) {
+      e.preventDefault(); // Stop screen scrolling when dragging
+      const cc = clientToCanvas(e.touches[0].clientX, e.touches[0].clientY);
+      draggingNode.x = cc.x - dragOffset.x; draggingNode.y = cc.y - dragOffset.y;
+      const el = getNodeEl(draggingNode.id);
+      if(el) { el.style.left = draggingNode.x + "px"; el.style.top = draggingNode.y + "px"; }
+      if(socket) socket.emit("node_move", {room: SHARE_ID, id: draggingNode.id, x: draggingNode.x, y: draggingNode.y});
+      redrawLinks(); if(draggingNode.groupId !== undefined) redrawGroups();
+  }
+}, {passive: false});
+
 document.addEventListener("mouseup",async e=>{
   if(resizingNode) { resizingNode=null; resizingTarget=null; saveGraph(); return; }
   if(resizingGroup){resizingGroup=null;saveGraph();return;}
@@ -1665,7 +1751,11 @@ document.addEventListener("mouseup",async e=>{
   hideMergeHint();
 });
 
-// Canvas Pan & Lasso
+document.addEventListener("touchend", e => {
+  if(draggingNode) { draggingNode = null; saveGraph(); }
+});
+
+// Canvas Pan & Lasso (Mouse)
 canvasWrapper.addEventListener("mousedown",e=>{
   if(e.target.closest(".node")||e.target.classList.contains("edge")||e.target.closest("#input-bar")||e.target.closest(".suggestion-btn")||e.target.closest(".group-hull")||e.target.closest("#top-bar")||e.target.closest("#zoom-controls"))return;
   if(e.shiftKey) {
@@ -1694,6 +1784,43 @@ canvasWrapper.addEventListener("mouseup",e=>{
   isPanning=false;canvasWrapper.style.cursor="default";
 });
 canvasWrapper.addEventListener("mouseleave",()=>{ isPanning=false;isLassoing=false; lassoBox.style.display="none"; canvasWrapper.style.cursor="default"; });
+
+// Canvas Pan & Zoom (Touch)
+let initialPinchDist = null;
+canvasWrapper.addEventListener("touchstart", e => {
+    if(e.touches.length === 2) {
+        initialPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        return;
+    }
+    if(e.target.closest(".node") || e.target.closest(".group-hull") || e.target.closest(".top-btn")) return;
+    isPanning = true; panMoved = false;
+    panStartX = e.touches[0].clientX; panStartY = e.touches[0].clientY;
+    panScrollX = canvasWrapper.scrollLeft; panScrollY = canvasWrapper.scrollTop;
+}, {passive: false});
+
+canvasWrapper.addEventListener("touchmove", e => {
+    if(e.touches.length === 2) {
+        e.preventDefault();
+        const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        if(initialPinchDist) {
+            const delta = (dist - initialPinchDist) * 0.01;
+            applyZoom(currentScale + delta, (e.touches[0].clientX + e.touches[1].clientX)/2, (e.touches[0].clientY + e.touches[1].clientY)/2);
+            initialPinchDist = dist;
+        }
+        return;
+    }
+    if(!isPanning) return;
+    e.preventDefault();
+    const dx = e.touches[0].clientX - panStartX; const dy = e.touches[0].clientY - panStartY;
+    if(Math.abs(dx) > 2 || Math.abs(dy) > 2) panMoved = true;
+    canvasWrapper.scrollLeft = panScrollX - dx; canvasWrapper.scrollTop = panScrollY - dy;
+}, {passive: false});
+
+canvasWrapper.addEventListener("touchend", e => {
+    initialPinchDist = null;
+    if(isPanning && !panMoved) { deselectAll(); hasActiveContext = false; }
+    isPanning = false;
+});
 
 function deselectAll(){ nodes.forEach(n=>n.selected=false); canvas.querySelectorAll(".node").forEach(el=>el.classList.remove("selected")); updateSuggestionsDebounced(); explicitlyDeselected=true; }
 document.addEventListener("click",e=>{ if(!canvas.contains(e.target)&&!document.getElementById("top-bar").contains(e.target)&&!document.getElementById("input-bar").contains(e.target)&&!suggestionsBar.contains(e.target)&&!colorPickerPopup.contains(e.target)){deselectAll();hasActiveContext=false;} });
@@ -1832,15 +1959,37 @@ async function sendPrompt(){
   if(raw.startsWith("/find ")){await runFindCommand(raw.slice(6).trim());promptEl.value="";return;}
   if(raw==="/undo"){undo();promptEl.value="";return;} if(raw==="/redo"){redo();promptEl.value="";return;}
   if(raw.startsWith("/delete")){runDeleteCommand(raw.slice(7));promptEl.value="";return;}
+  
   dimAllNodes(); const cls=await classifyInput(raw); const ctx=buildContext(); const spawn=getSmartSpawnPos();
+  
   if(cls.type==="timer"&&cls.seconds){ const n=addNode("timer "+cls.seconds+"s","timer",spawn.x,spawn.y,{seconds:cls.seconds,label:"timer"}); startTimer(n);promptEl.value="";saveGraph();updateSuggestionsDebounced();return; }
-  if(cls.type==="ai_command"){ const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:raw,context:ctx})}); const d=await r.json();addNode(d.reply||"","answer",spawn.x,spawn.y); promptEl.value="";saveGraph();updateSuggestionsDebounced(); smartRecenter(true, spawn.x + 100, spawn.y); return; }
-  const qn=addNode(raw,"question",spawn.x,spawn.y); lastQuestionNodeId=qn.id;
-  const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:raw,context:ctx})}); const d=await r.json();
-  const an=addNode(d.reply||"","answer",spawn.x+340,spawn.y); addLink(qn.id,an.id); an.selected=true; const anel=getNodeEl(an.id);if(anel)anel.classList.add("selected");
-  hasActiveContext=true; redrawLinks();promptEl.value="";saveGraph();updateSuggestionsDebounced();
+  
+  const qn = addNode(raw, "question", spawn.x, spawn.y); lastQuestionNodeId = qn.id;
+  
+  // Show thinking node immediately
+  const an = addNode("", "answer", spawn.x+340, spawn.y); 
+  addLink(qn.id, an.id);
+  const anel = getNodeEl(an.id); 
+  if(anel) anel.classList.add("is-thinking");
+  an.selected = true; 
+  if(anel) anel.classList.add("selected");
+  updateNodeTextDOM(an);
   smartRecenter(true, spawn.x + 170, spawn.y);
+  
+  promptEl.value="";
+  
+  // Fetch AI Response
+  const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:raw,context:ctx})}); 
+  const d=await r.json();
+  
+  // Update node with actual answer
+  an.text = d.reply || "";
+  if(anel) anel.classList.remove("is-thinking");
+  updateNodeTextDOM(an);
+  
+  hasActiveContext=true; redrawLinks(); saveGraph(); updateSuggestionsDebounced();
 }
+
 document.getElementById("send-btn").onclick=sendPrompt;
 document.getElementById("study-btn").onclick=async()=>{
   const ctx=buildContext();if(!ctx){alert("Select some nodes first.");return;} const spawn=getSmartSpawnPos();
@@ -2226,10 +2375,12 @@ def brainstorm():
     if "user_id" not in session: return jsonify({"error":"unauthorized"}),401
     d = request.get_json()
     topic = d.get("topic", "")
-    sys = ('You are a brainstorm assistant. Analyze the topic and branch out conceptually. '
-           'Generate a multi-level structure. Return ONLY a valid JSON object representing a tree. '
+    sys = ('You are a brainstorm assistant. Analyze the complexity of the topic. '
+           'For simple topics, generate a small, shallow tree (1 level deep, 2-3 children). '
+           'For complex topics, generate a larger, multi-level tree (up to 3 levels deep, branching out dynamically). '
+           'Adapt the depth and width dynamically based on what the topic actually requires to explore it properly. '
            'Format: {"topic": "Root idea", "children": [{"topic": "Sub idea 1", "children": [...]}, ...]} '
-           'Go 2 levels deep, max 3-4 children per level. No markdown formatting.')
+           'Return ONLY a valid JSON object representing this tree. No markdown formatting.')
     try:
         raw = call_groq([{"role": "system", "content": sys}, {"role": "user", "content": topic}])
         clean = raw.strip().strip("```json").strip("```").strip()
