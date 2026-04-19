@@ -32,10 +32,20 @@ app.use(session({
   },
 }));
 
+import path from 'path';
+
 // Routes
 app.use('/auth', authRouter);
 app.use('/', graphRouter);
 app.use('/', aiRouter);
 app.use('/', settingsRouter);
+
+// Serve static frontend in production
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDistPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDistPath, 'index.html'));
+});
 
 export default app;
