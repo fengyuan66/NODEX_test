@@ -172,8 +172,13 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,0.12
   color:#fff;font-family:inherit;font-size:12px;font-weight:600;
   cursor:pointer;transition:all .2s;letter-spacing:.04em;
   box-shadow:0 0 20px rgba(124,58,237,0.3);
+  margin-bottom: 12px;
 }
 .btn:hover{background:#6d28d9;box-shadow:0 0 30px rgba(124,58,237,0.5);}
+.btn-guest {
+  background: transparent; border: 1px solid var(--border); color: var(--text); box-shadow: none; margin-bottom: 0;
+}
+.btn-guest:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2); box-shadow: none; }
 .msg{font-size:11px;margin-top:14px;padding:8px 12px;border-radius:6px;display:none;}
 .msg.error{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--red);}
 .msg.success{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:var(--green);}
@@ -196,7 +201,8 @@ input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,58,237,0.12
     <input type="checkbox" id="remember" checked/>
     <span>Keep me signed in for 30 days</span>
   </label>
-  <button class="btn" onclick="submit()">Sign In →</button>
+  <button class="btn" onclick="submit()" id="main-btn">Sign In →</button>
+  <button class="btn btn-guest" onclick="window.location.href='/auth/guest'">Continue as Guest (Not Saved)</button>
   <div class="msg" id="msg"></div>
 </div>
 <script>
@@ -205,7 +211,7 @@ function switchTab(t){
   mode=t;
   document.getElementById('tab-signin').classList.toggle('active',t==='signin');
   document.getElementById('tab-signup').classList.toggle('active',t==='signup');
-  document.querySelector('.btn').textContent=t==='signin'?'Sign In →':'Create Account →';
+  document.getElementById('main-btn').textContent=t==='signin'?'Sign In →':'Create Account →';
   document.getElementById('msg').style.display='none';
 }
 async function submit(){
@@ -235,6 +241,12 @@ def login_page():
     if "user_id" in session:
         return redirect("/")
     return Response(LOGIN_HTML, mimetype="text/html")
+
+@app.route("/auth/guest")
+def auth_guest():
+    session["user_id"] = -1
+    session["email"] = "Guest"
+    return redirect("/b/guest")
 
 @app.route("/auth/signup", methods=["POST"])
 def signup():
@@ -352,11 +364,10 @@ INDEX_HTML = r"""<!DOCTYPE html>
 *{box-sizing:border-box;}
 body{margin:0;padding:0;background:var(--bg);color:var(--text);
   font-family:'JetBrains Mono',ui-monospace,monospace;
-  overflow:hidden; touch-action: none;} /* touch-action none ensures custom gesture handling */
+  overflow:hidden; touch-action: none;} 
 
 #app{position:fixed;inset:0;display:flex;flex-direction:column;z-index:1;}
 
-/* Hide scrollbars */
 *::-webkit-scrollbar{display:none;}
 *{-ms-overflow-style:none;scrollbar-width:none;}
 
@@ -375,15 +386,16 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   min-width: 150px; max-width: 300px;
 }
 .board-title-input:hover, .board-title-input:focus {
-  background: var(--surface); box-shadow: inset 0 0 0 1px var(--border2);
+  background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);
 }
 
 .user-badge{
   font-size:calc(10px * var(--ui-scale));color:var(--muted2);
   padding:calc(6px * var(--ui-scale)) calc(12px * var(--ui-scale));
-  border:1px solid rgba(255,255,255,0.1);border-radius:8px;
-  background:var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border:1px solid rgba(255,255,255,0.1);border-radius:12px;
+  background:rgba(255,255,255,0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   letter-spacing:.05em; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
 }
 .user-badge a{color:var(--accent);text-decoration:none;}
 .user-badge a:hover{color:var(--purple);}
@@ -392,7 +404,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   flex:1;overflow:scroll;position:relative;background:var(--canvas-bg);cursor:default;
 }
 
-/* Scalable Background Grid on the Canvas */
 #canvas{
   position:absolute;top:0;left:0;
   background-image:
@@ -402,7 +413,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 }
 #link-layer{position:absolute;inset:0;pointer-events:auto;}
 
-/* Lasso Selection Box */
 #lasso-box {
   position: absolute;
   border: 2px dashed rgba(255, 255, 255, 0.8);
@@ -413,7 +423,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
 }
 
-/* ── Markdown Styles ── */
 .markdown-body { font-family: inherit; font-size: inherit; line-height: 1.4; }
 .markdown-body p { margin: 0 0 8px 0; }
 .markdown-body p:last-child { margin: 0; }
@@ -421,12 +430,10 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .markdown-body em { font-style: italic; }
 .markdown-body code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
 
-/* Thinking Animation */
 @keyframes pulse-think { 0% { opacity: 0.5; } 50% { opacity: 1; text-shadow: 0 0 10px var(--accent-glow); } 100% { opacity: 0.5; } }
 .thinking-spinner { animation: pulse-think 1.5s infinite ease-in-out; font-style: italic; color: var(--accent); font-weight: bold; }
 .is-thinking .bubble { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-soft); }
 
-/* ── NODES ── */
 .node{position:absolute;cursor:grab;user-select:none;font-size:12px;line-height:1.3;z-index:10;}
 .node-circle{
   width:10px;height:10px;border-radius:999px;margin-bottom:3px;
@@ -439,7 +446,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .node:hover .node-text{opacity:1!important;}
 .node:hover .node-circle{transform:scale(1.25);}
 
-/* Expandable content */
 .content-box { max-height: 150px; overflow-y: auto; overflow-wrap: anywhere; padding-right: 4px; max-width: 300px; }
 .content-box.expanded { max-height: none; }
 .expand-btn {
@@ -449,7 +455,6 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 }
 .expand-btn:hover { text-decoration: underline; }
 
-/* Node type colors */
 .node-question .node-circle, .node-text .node-circle {background:var(--node-q);box-shadow:0 0 8px var(--purple-glow),0 0 2px var(--purple-glow);}
 .node-answer .node-circle{background:var(--node-a);box-shadow:0 0 8px var(--green-glow),0 0 2px var(--green-glow);}
 .node-answer.completed .node-circle{background:var(--blue);box-shadow:0 0 8px var(--blue-glow),0 0 2px var(--blue-glow);}
@@ -461,6 +466,11 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .node.selected .node-circle{background:var(--select-color)!important;box-shadow:0 0 0 2px var(--select-color),0 0 14px var(--accent-glow),0 0 4px var(--accent-glow)!important;transform:scale(1.3);}
 .node.ctrl-highlight .node-circle{outline:2px solid var(--orange);outline-offset:3px;box-shadow:0 0 12px rgba(249,115,22,0.5)!important;}
 .node.find-focus .node-circle{box-shadow:0 0 0 3px var(--accent),0 0 24px var(--accent-glow)!important;animation:find-pulse 1s ease-in-out 3;}
+
+/* Pinned Highlight Styles */
+.pinned-highlight .node-circle { box-shadow: 0 0 0 4px var(--purple), 0 0 20px var(--purple-glow) !important; transform: scale(1.4); }
+.group-hull.pinned-highlight { border-width: 3px !important; border-color: var(--purple) !important; box-shadow: 0 0 30px var(--purple-glow) !important; z-index: 10; }
+
 @keyframes find-pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.4);}}
 
 .group-badge{position:absolute;top:-8px;left:-4px;width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,0,0,.4);z-index:6;}
@@ -514,7 +524,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .group-hull{
   position:absolute;border-radius:16px;border:1px solid;
   pointer-events:all;z-index:2;cursor:move;
-  transition:opacity .2s;
+  transition:opacity .2s, border-color .3s, box-shadow .3s;
 }
 .group-hull:not(.collapsed){opacity:.12;}
 .group-hull:not(.collapsed):hover{opacity:.2;}
@@ -549,21 +559,21 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   background: transparent; border: none; padding: 0; min-height: auto;
 }
 .suggestion-btn{
-  background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 20px;
   padding: 6px 14px; font-size: 11px; color:var(--text); cursor:pointer;
-  transition:all .15s; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition:all .2s; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.suggestion-btn:hover{border-color:var(--accent);color:var(--text);box-shadow:0 0 8px var(--accent-soft);}
+.suggestion-btn:hover{border-color:rgba(255,255,255,0.3); background: rgba(255,255,255,0.1); box-shadow:0 6px 16px rgba(124,58,237,0.2), inset 0 1px 0 rgba(255,255,255,0.1);}
 
 #input-bar {
   position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 12px; padding: 12px 18px;
-  background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.1); border-radius: 30px;
   width: 640px; max-width: 90vw;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(124,58,237,0.2);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
   z-index: 1000; align-items: flex-end;
 }
 #prompt {
@@ -582,29 +592,56 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 }
 #send-btn:hover { transform: scale(1.05); background: var(--accent); color: white; box-shadow: 0 0 15px var(--accent-glow); }
 
-.top-btn{
-  background:var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  border:1px solid rgba(255,255,255,0.1); color:var(--text);
-  padding:calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
-  border-radius:8px;font-family:inherit;font-size:calc(12px * var(--ui-scale));
-  cursor:pointer; transition:all .15s;white-space:nowrap;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+/* Glass Style Buttons */
+.top-btn {
+  background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1); border-top: 1px solid rgba(255, 255, 255, 0.25);
+  color: var(--text); padding: calc(8px * var(--ui-scale)) calc(14px * var(--ui-scale));
+  border-radius: 12px; font-family: inherit; font-size: calc(12px * var(--ui-scale)); font-weight: 500;
+  cursor: pointer; transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.top-btn:hover{border-color:var(--accent);color:var(--text); box-shadow: 0 4px 15px rgba(124,58,237,0.2);}
+.top-btn:hover { 
+  background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.3); 
+  transform: translateY(-1px); box-shadow: 0 6px 16px rgba(124,58,237,0.15), inset 0 1px 0 rgba(255,255,255,0.1); 
+}
+.top-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Chat Window */
+#chat-window { 
+  position:fixed; right:20px; bottom:100px; width:300px; height:400px; 
+  background:var(--glass-bg); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); 
+  border:1px solid rgba(255,255,255,0.1); border-radius:16px; display:none; 
+  flex-direction:column; z-index:2000; box-shadow: 0 10px 40px rgba(0,0,0,0.5); resize: both; overflow: hidden; 
+}
+#chat-window.visible { display:flex; }
+.chat-header { padding: 12px; border-bottom: 1px solid var(--border2); font-weight: bold; display:flex; justify-content: space-between; align-items:center; font-size: 13px; }
+#chat-close { background:transparent; border:none; color:var(--text); cursor:pointer; font-size:16px; transition: color 0.2s; }
+#chat-close:hover { color: var(--red); }
+.chat-messages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.chat-msg { background:var(--surface2); padding:8px; border-radius:8px; font-size:11px; word-wrap:break-word; border: 1px solid var(--border2); }
+.chat-msg .sender { font-weight:bold; color:var(--accent); margin-bottom:2px; font-size:10px; }
+.chat-msg .node-ref { display:inline-block; background:rgba(124,58,237,0.2); border:1px solid var(--accent); padding:2px 6px; border-radius:4px; margin-bottom:4px; cursor:pointer; color:var(--text); text-decoration:none; font-size: 9px; }
+.chat-msg .node-ref:hover { background:rgba(124,58,237,0.4); }
+.chat-input-wrap { display:flex; border-top:1px solid var(--border2); padding:8px; background:rgba(0,0,0,0.2); gap: 6px; }
+#chat-input { flex:1; background:transparent; border:none; color:var(--text); outline:none; font-family:inherit; font-size:11px; }
+#chat-send { background:var(--accent); border:none; color:white; border-radius:50%; width:28px; height:28px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink: 0;}
+#chat-send:hover { background: var(--accent2); }
 
 #zoom-controls{
   position:fixed;bottom:124px;right:14px;display:flex;flex-direction:column;gap:6px;z-index:200;
 }
 .zoom-btn{
-  background:var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background:rgba(255,255,255,0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border:1px solid rgba(255,255,255,0.1); color:var(--text);
-  width:36px;height:36px;border-radius:8px;font-family:inherit;font-size:16px;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;transition:all .15s;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  width:36px;height:36px;border-radius:12px;font-family:inherit;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-.zoom-btn:hover{border-color:var(--accent);color:var(--text);box-shadow: 0 4px 15px rgba(124,58,237,0.2);}
+.zoom-btn:hover{background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.3); color:var(--text);box-shadow: 0 4px 15px rgba(124,58,237,0.2);}
 #zoom-label{
-  background:var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  background:rgba(255,255,255,0.05); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border:1px solid rgba(255,255,255,0.1); color:var(--text);
   font-size:10px;border-radius:8px;text-align:center;padding:4px 0;font-family:inherit;
 }
@@ -651,7 +688,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 }
 .modal-overlay.visible{display:flex;}
 .modal-box {
-  background:var(--surface);border:1px solid var(--border2);border-radius:14px;
+  background:var(--surface);border:1px solid var(--border2);border-radius:16px;
   padding:24px;min-width:320px;display:flex;flex-direction:column;gap:16px;
   box-shadow:0 0 60px rgba(124,58,237,0.15); max-width: 90vw;
 }
@@ -659,14 +696,14 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .settings-row{display:flex;flex-direction:column;gap:6px;}
 .settings-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.05em;}
 .settings-select, .modal-input{
-  background:var(--surface2);border:1px solid var(--border2);border-radius:6px;
-  color:var(--text);font-family:inherit;font-size:11px;padding:8px;outline:none; width: 100%;
+  background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:inherit;font-size:11px;padding:10px;outline:none; width: 100%;
 }
 .modal-close, .modal-btn{
   background:var(--surface2);border:1px solid var(--border2);color:var(--text);
   font-family:inherit;font-size:calc(11px * var(--ui-scale));
   padding:calc(8px * var(--ui-scale)) calc(12px * var(--ui-scale));
-  border-radius:6px;cursor:pointer;
+  border-radius:8px;cursor:pointer;
   transition:all .15s; align-self: flex-end; font-weight: bold;
 }
 .modal-close:hover{border-color:var(--accent);}
@@ -680,7 +717,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .remove-collab-btn:hover { background: rgba(239,68,68,0.2); }
 
 .dash-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-.dash-item { font-size: 11px; padding: 12px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border2); transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
+.dash-item { font-size: 11px; padding: 12px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border2); transition: all 0.2s; display: flex; justify-content: space-between; align-items: center; }
 .dash-item:hover { border-color: var(--accent); background: rgba(124,58,237,0.05); }
 
 .dash-delete-btn { background: transparent; border: none; color: var(--red); cursor: pointer; font-size: 14px; margin-left: 8px; padding: 4px; border-radius: 4px;}
@@ -689,9 +726,9 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 /* Share & Presence */
 #share-btn {
   background: var(--accent); color: white; font-weight: bold; border: none;
-  box-shadow: 0 0 10px var(--accent-glow); margin-left: auto;
+  box-shadow: 0 0 10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2); margin-left: auto;
 }
-#share-btn:hover { background: var(--accent2); }
+#share-btn:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 15px var(--accent-glow); }
 #presence-bar { display: flex; gap: -8px; margin-left: 10px; align-items: center;}
 .presence-avatar {
   width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--surface);
@@ -712,33 +749,87 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   box-shadow: 0 2px 4px rgba(0,0,0,0.5); white-space: nowrap;
   text-shadow: 0 1px 3px rgba(0,0,0,0.8);
 }
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  #top-bar {
+      top: 8px; left: 8px; right: 8px;
+      overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px;
+  }
+  .board-title-input { min-width: 100px; font-size: 12px; }
+  .top-btn { padding: 6px 10px; font-size: 11px; }
+  #input-bar {
+      width: calc(100vw - 16px); bottom: 16px; padding: 8px 12px;
+      border-radius: 20px;
+  }
+  #suggestions-bar {
+      bottom: 70px; flex-wrap: nowrap; overflow-x: auto;
+      width: 100vw; padding: 0 10px; justify-content: flex-start;
+  }
+  .suggestion-btn { flex-shrink: 0; }
+  #chat-window {
+      width: calc(100vw - 32px); right: 16px; height: 350px; bottom: 80px;
+  }
+}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="top-bar">
-    <button class="top-btn" id="dash-btn" title="Dashboard">🏠 Dashboard</button>
-    <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
-    <input type="text" id="board-title-input" class="board-title-input" value="Untitled Canvas" />
-    <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px;"></div>
+    <button class="top-btn" id="dash-btn" title="Dashboard">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg> Dash
+    </button>
+    <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px; flex-shrink:0;"></div>
     
-    <button class="top-btn" id="study-btn">Study</button>
-    <button class="top-btn" id="auto-btn">Auto Layout</button>
-    <button class="top-btn" id="group-btn">Group Nodes</button>
-    <button class="top-btn" id="note-btn">Add Note</button>
-    <button class="top-btn" id="brainstorm-btn">Brainstorm</button>
-    <button class="top-btn" id="settings-btn" title="Settings">⚙ Settings</button>
+    <input type="text" id="board-title-input" class="board-title-input" value="Untitled Canvas" />
+    <div id="sync-indicator" title="Sync Status" style="display:flex; align-items:center; margin-left: 4px; flex-shrink:0;">
+      </div>
+
+    <div style="width: 1px; height: 16px; background: rgba(255,255,255,0.2); margin: 0 4px; flex-shrink:0;"></div>
+    
+    <button class="top-btn" id="study-btn">
+      <svg viewBox="0 0 24 24"><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path></svg> Study
+    </button>
+    <button class="top-btn" id="auto-btn">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg> Auto Layout
+    </button>
+    <button class="top-btn" id="group-btn">
+      <svg viewBox="0 0 24 24"><path d="M4 4h6v6H4z"></path><path d="M14 4h6v6h-6z"></path><path d="M14 14h6v6h-6z"></path><path d="M4 14h6v6H4z"></path></svg> Group
+    </button>
+    <button class="top-btn" id="note-btn">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg> Note
+    </button>
+    <button class="top-btn" id="brainstorm-btn">
+      <svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Brainstorm
+    </button>
+    <button class="top-btn" id="settings-btn" title="Settings">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> Settings
+    </button>
+    <button class="top-btn" id="chat-btn" style="display:none;">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg> Chat
+    </button>
     
     <div id="presence-bar"></div>
-    <button class="top-btn" id="share-btn">Share Canvas</button>
+    <button class="top-btn" id="share-btn">Share</button>
     <div class="user-badge" id="user-badge">…</div>
   </div>
+
   <div id="canvas-wrapper">
     <div id="canvas">
       <div id="lasso-box"></div>
       <svg id="link-layer"></svg>
     </div>
   </div>
+
+  <div id="chat-window">
+      <div class="chat-header">Team Chat <button id="chat-close">✕</button></div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-wrap">
+          <input type="text" id="chat-input" placeholder="Type a message...">
+          <button id="chat-send">▶</button>
+      </div>
+  </div>
+
   <div id="suggestions-bar"></div>
   <div id="input-bar">
     <div id="slash-popup"></div>
@@ -857,13 +948,18 @@ const SHARE_ID = '$$SHARE_ID$$';
 const IS_OWNER = $$IS_OWNER$$;
 const BOARD_TITLE = '$$BOARD_TITLE$$';
 
-let socket = io();
+let socket = null;
+if (SHARE_ID !== 'guest') {
+    socket = io();
+}
 const remoteCursors = {};
 const userLastPositions = {};
 let currentUserEmail = "";
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let nodes=[], links=[], groups=[];
+let chatMessages=[];
+let chatReplyNode=null;
 let nextNodeId=1, nextLinkId=1, nextGroupId=1;
 let draggingNode=null, dragOffset={x:0,y:0};
 let draggingGroup=null, groupDragOffset={x:0,y:0}, groupDragNodeOffsets=[];
@@ -895,6 +991,7 @@ let lassoStartX=0, lassoStartY=0;
 const GROUP_COLORS=["#f87171","#fb923c","#fbbf24","#a3e635","#34d399","#22d3ee","#60a5fa","#a78bfa","#f472b6","#e2e8f0"];
 const SLASH_COMMANDS=[
   {cmd:"/find",   desc:"Scroll to the most relevant node",  argHint:"/find "},
+  {cmd:"/pinned", desc:"Highlight all pinned items",         argHint:"/pinned"},
   {cmd:"/delete", desc:"Delete: all | last | prompts",       argHint:"/delete "},
   {cmd:"/undo",   desc:"Undo last action",                   argHint:"/undo"},
   {cmd:"/redo",   desc:"Redo last undone action",            argHint:"/redo"},
@@ -905,6 +1002,10 @@ const THEMES = {
   nord: { bg:"#2E3440", canvas:"#2E3440", surface:"#3B4252", surface2:"#434C5E", border:"#4C566A", border2:"#4C566A", text:"#ECEFF4", muted:"#D8DEE9", muted2:"#E5E9F0", glassBg:"rgba(59, 66, 82, 0.65)", gridColor:"rgba(255, 255, 255, 0.1)" },
   light: { bg:"#f8f9fa", canvas:"#e9ecef", surface:"#ffffff", surface2:"#f8f9fa", border:"#dee2e6", border2:"#ced4da", text:"#212529", muted:"#6c757d", muted2:"#495057", glassBg:"rgba(255, 255, 255, 0.7)", gridColor:"rgba(0, 0, 0, 0.1)" }
 };
+
+const syncSvgSynced = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+const syncSvgSyncing = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>`;
+const syncSvgOffline = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22.61 16.95A5 5 0 0 0 18 10h-1.26a8 8 0 0 0-7.05-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3M1 1l22 22"/></svg>`;
 
 // ── DOM ───────────────────────────────────────────────────────────────────────
 const canvasWrapper=document.getElementById("canvas-wrapper");
@@ -922,10 +1023,27 @@ promptEl.addEventListener("input", function() {
   this.style.height = (this.scrollHeight) + "px";
 });
 
+// ── Sync Indicator ────────────────────────────────────────────────────────────
+let syncTimeout;
+function showSyncing() {
+    if(SHARE_ID === 'guest') return;
+    const ind = document.getElementById("sync-indicator");
+    if(ind) { ind.innerHTML = syncSvgSyncing; ind.querySelector("svg").style.animation = "spin 1s linear infinite"; }
+}
+function showSynced() {
+    if(SHARE_ID === 'guest') { document.getElementById("sync-indicator").innerHTML = syncSvgOffline; return; }
+    const ind = document.getElementById("sync-indicator");
+    if(ind) ind.innerHTML = syncSvgSynced;
+}
+const styleSheet = document.createElement("style");
+styleSheet.innerText = "@keyframes spin { 100% { transform: rotate(360deg); } }";
+document.head.appendChild(styleSheet);
+
 // ── Board Title & Owner Controls ──────────────────────────────────────────────
 const titleInput = document.getElementById("board-title-input");
 titleInput.value = BOARD_TITLE;
 titleInput.addEventListener("change", async () => {
+  if (SHARE_ID === 'guest') { titleInput.value = BOARD_TITLE; return; }
   if (!IS_OWNER) {
       alert("Only the owner can rename the canvas.");
       titleInput.value = BOARD_TITLE;
@@ -937,7 +1055,7 @@ titleInput.addEventListener("change", async () => {
           method: "POST", headers: {"Content-Type": "application/json"},
           body: JSON.stringify({ share_id: SHARE_ID, title: newTitle })
       });
-      socket.emit("title_update", { room: SHARE_ID, title: newTitle });
+      if(socket) socket.emit("title_update", { room: SHARE_ID, title: newTitle });
   } catch(e) {}
 });
 
@@ -983,6 +1101,7 @@ document.getElementById("theme-select").addEventListener("change", e => applyThe
 document.getElementById("ui-scale-select").addEventListener("change", e => applyUiScale(e.target.value));
 
 async function saveSettings() {
+  if(SHARE_ID === 'guest') return;
   const settings = { 
     zoomSpeed: document.getElementById("zoom-speed-select").value,
     theme: document.getElementById("theme-select").value,
@@ -993,6 +1112,7 @@ async function saveSettings() {
 }
 
 async function loadSettings() {
+  if(SHARE_ID === 'guest') return;
   try {
     const r = await fetch("/load_settings");
     if(r.ok) { 
@@ -1002,6 +1122,54 @@ async function loadSettings() {
         if(data.uiScale) { document.getElementById("ui-scale-select").value = data.uiScale; applyUiScale(data.uiScale); }
     }
   } catch(e){}
+}
+
+// ── Chat System ───────────────────────────────────────────────────────────────
+document.getElementById("chat-btn").onclick = () => {
+    document.getElementById("chat-window").classList.toggle("visible");
+    setTimeout(renderChat, 50);
+};
+document.getElementById("chat-close").onclick = () => document.getElementById("chat-window").classList.remove("visible");
+
+function renderChat() {
+    const box = document.getElementById("chat-messages");
+    box.innerHTML = "";
+    chatMessages.forEach(m => {
+        const div = document.createElement("div"); div.className = "chat-msg";
+        let refHtml = m.nodeRef ? `<div class="node-ref" onclick="smartRecenter(true, ${m.nodeRefX}, ${m.nodeRefY})">↳ Replying to Node</div><br>` : "";
+        div.innerHTML = `<div class="sender">${m.sender}</div>${refHtml}${m.text}`;
+        box.appendChild(div);
+    });
+    box.scrollTop = box.scrollHeight;
+}
+
+function sendChat() {
+    const inp = document.getElementById("chat-input");
+    const text = inp.value.trim();
+    if(!text) return;
+    const msg = { id: Date.now(), sender: currentUserEmail || "Guest", text: text, nodeRef: chatReplyNode?.id, nodeRefX: chatReplyNode?.x, nodeRefY: chatReplyNode?.y };
+    chatMessages.push(msg);
+    renderChat();
+    if(socket) socket.emit("chat_message", { room: SHARE_ID, msg: msg });
+    saveGraph();
+    inp.value = "";
+    chatReplyNode = null;
+    inp.placeholder = "Type a message...";
+}
+document.getElementById("chat-send").onclick = sendChat;
+document.getElementById("chat-input").onkeydown = e => { if(e.key === "Enter") sendChat(); };
+
+if(socket) {
+    socket.on("chat_message", data => {
+        chatMessages.push(data.msg);
+        renderChat();
+        if(!document.getElementById("chat-window").classList.contains("visible")) {
+            const btn = document.getElementById("chat-btn");
+            btn.style.boxShadow = "0 0 15px var(--green)";
+            btn.style.borderColor = "var(--green)";
+            setTimeout(()=> { btn.style.boxShadow = ""; btn.style.borderColor = ""; }, 2000);
+        }
+    });
 }
 
 // ── Canvas init & Zoom ────────────────────────────────────────────────────────
@@ -1136,7 +1304,7 @@ function restoreSnapshot(snap){
   canvas.querySelectorAll(".node,.group-hull,.group-label,.group-collapse-btn").forEach(el=>el.remove());
   nodes=s.nodes;links=s.links;groups=s.groups||[];
   nextNodeId=s.nextNodeId;nextLinkId=s.nextLinkId;nextGroupId=s.nextGroupId||1;
-  nodes.forEach(n=>createNodeElement(n));
+  nodes.forEach(n=>{if(!n.meta)n.meta={};createNodeElement(n);});
   redrawLinks();redrawGroups();saveGraph();
 }
 function undo(){if(!undoStack.length)return;redoStack.push(captureSnapshot());restoreSnapshot(undoStack.pop());}
@@ -1206,7 +1374,7 @@ function getGroupBounds(group){
 
 function createGroup(nodeIds,color,name){
   pushUndo(); const id=nextGroupId++;
-  const group={id,name:name||("Group "+id),color,nodeIds:[...nodeIds],collapsed:false,collapsedW:160,collapsedH:60,collapsedX:null,collapsedY:null};
+  const group={id,name:name||("Group "+id),color,nodeIds:[...nodeIds],pinned:false,collapsed:false,collapsedW:160,collapsedH:60,collapsedX:null,collapsedY:null};
   groups.push(group);
   nodeIds.forEach(nid=>{
     const n=nodes.find(x=>x.id===nid);if(n)n.groupId=id;
@@ -1233,7 +1401,6 @@ function addNodeToGroup(nodeId,gid){
   redrawGroups();saveGraph();
 }
 
-// Emitting Live Collapse Events Makes Them Seamless
 function collapseGroup(gid, emitEvent = true){
   const g=groups.find(x=>x.id===gid);if(!g||g.collapsed)return;
   if (emitEvent && socket) socket.emit("group_action", { room: SHARE_ID, action: "collapse", gid });
@@ -1275,7 +1442,7 @@ function redrawGroups(){
   canvas.querySelectorAll(".group-hull,.group-label,.group-collapse-btn").forEach(el=>el.remove());
   groups.forEach(group=>{
     if(group.collapsed){
-      const hull=document.createElement("div"); hull.className="group-hull collapsed";hull.dataset.gid=group.id;
+      const hull=document.createElement("div"); hull.className="group-hull collapsed" + (group.pinned ? " pinned-highlight" : ""); hull.dataset.gid=group.id;
       const cx=group.collapsedX||ORIGIN_X,cy=group.collapsedY||ORIGIN_Y; const cw=group.collapsedW||160,ch=group.collapsedH||60;
       hull.style.cssText=`left:${cx}px;top:${cy}px;width:${cw}px;height:${ch}px;border-color:${group.color};background:${group.color};box-shadow:0 0 18px ${group.color}44;`;
       hull.addEventListener("mousedown",e=>{
@@ -1295,7 +1462,7 @@ function redrawGroups(){
     const memberNodes=nodes.filter(n=>group.nodeIds.includes(n.id)); if(!memberNodes.length)return;
     const bounds=getGroupBounds(group);if(!bounds)return;
     const{minX,minY,maxX,maxY}=bounds; const pad=24;
-    const hull=document.createElement("div"); hull.className="group-hull";hull.dataset.gid=group.id;
+    const hull=document.createElement("div"); hull.className="group-hull" + (group.pinned ? " pinned-highlight" : ""); hull.dataset.gid=group.id;
     hull.style.cssText=`left:${minX-pad}px;top:${minY-pad}px;width:${maxX-minX+pad*2}px;height:${maxY-minY+pad*2}px;border-color:${group.color};background:${group.color};`;
     hull.addEventListener("mousedown",e=>{
       if(e.button!==0)return;e.stopPropagation(); draggingGroup=group; const cc=clientToCanvas(e.clientX,e.clientY); groupDragOffset={x:cc.x-(minX-pad),y:cc.y-(minY-pad)};
@@ -1317,12 +1484,17 @@ function buildCtxMenu(type, x, y) {
         const g = groups.find(g => g.id === ctxTargetGroupId);
         if(!g) return;
         ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-snap">Snap to group</div>`;
+        ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-pin-group">${g.pinned ? 'Unpin' : 'Pin'} group</div>`;
         ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-rename">Rename group</div>`;
         ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-recolor">Change color</div>`;
         ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-collapse-toggle">${g.collapsed ? 'Expand group' : 'Collapse group'}</div>`;
         ctxMenu.innerHTML += `<div class="ctx-item danger" id="ctx-delete-group">Delete group</div>`;
     } else if (type === "node") {
+        const n = nodes.find(n => n.id === ctxTargetNodeId);
+        if(!n) return;
         ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-snap">Snap to node</div>`;
+        ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-pin-node">${n.meta?.pinned ? 'Unpin' : 'Pin'} node</div>`;
+        ctxMenu.innerHTML += `<div class="ctx-item" id="ctx-reply-chat">Reply in Chat</div>`;
         ctxMenu.innerHTML += `<div class="ctx-item danger" id="ctx-delete-node">Delete node</div>`;
     }
     
@@ -1339,6 +1511,35 @@ function buildCtxMenu(type, x, y) {
         ctxMenu.classList.remove("visible");
     };
     
+    const pinGrpBtn = document.getElementById("ctx-pin-group");
+    if(pinGrpBtn) pinGrpBtn.onclick = () => {
+        if(ctxTargetGroupId !== null) {
+            const g = groups.find(x=>x.id===ctxTargetGroupId);
+            if(g) { g.pinned = !g.pinned; redrawGroups(); saveGraph(); }
+        }
+        ctxMenu.classList.remove("visible");
+    };
+
+    const pinNodeBtn = document.getElementById("ctx-pin-node");
+    if(pinNodeBtn) pinNodeBtn.onclick = () => {
+        if(ctxTargetNodeId !== null) {
+            const n = nodes.find(x=>x.id===ctxTargetNodeId);
+            if(n) { n.meta.pinned = !n.meta.pinned; redrawGroups(); saveGraph(); }
+        }
+        ctxMenu.classList.remove("visible");
+    };
+    
+    const replyChatBtn = document.getElementById("ctx-reply-chat");
+    if(replyChatBtn) replyChatBtn.onclick = () => {
+        if(ctxTargetNodeId !== null) {
+            chatReplyNode = nodes.find(n=>n.id===ctxTargetNodeId);
+            document.getElementById("chat-window").classList.add("visible");
+            document.getElementById("chat-input").placeholder = `Replying to node...`;
+            document.getElementById("chat-input").focus();
+        }
+        ctxMenu.classList.remove("visible");
+    };
+
     const renBtn = document.getElementById("ctx-rename");
     if(renBtn) renBtn.onclick = () => {
         if(ctxTargetGroupId===null)return; const g=groups.find(x=>x.id===ctxTargetGroupId);if(!g)return; const n=prompt("Group name:",g.name);
@@ -1488,6 +1689,7 @@ function renderBrainstormTree(nodeData, parentNodeId, x, y, level) {
 function createNodeElement(node){
   const el=document.createElement("div"); el.className="node node-"+node.type; if(node.completed)el.classList.add("completed"); el.dataset.id=node.id;
   el.style.left=node.x+"px";el.style.top=node.y+"px"; applyDimClass(el,node.dim||0);
+  if(node.meta?.pinned) el.classList.add("pinned-highlight");
   if(node.groupId!==undefined){ const g=groups.find(x=>x.id===node.groupId); if(g&&g.collapsed)el.style.display="none"; }
   const circle=document.createElement("div");circle.className="node-circle";
   const textWrap=document.createElement("div");textWrap.className="node-text";
@@ -1545,7 +1747,6 @@ function createNodeElement(node){
     };
     wrap.appendChild(input);wrap.appendChild(runBtn); textWrap.appendChild(wrap);
   } else { 
-    // Expandable content box for standard questions/text
     const box = document.createElement("div"); box.className = "content-box"; box.innerHTML = `<div class="markdown-body">${marked.parse(node.text||"")}</div>`;
     const exp = document.createElement("button"); exp.className = "expand-btn"; exp.textContent = "Show more";
     textWrap.appendChild(box); textWrap.appendChild(exp);
@@ -1719,7 +1920,7 @@ document.addEventListener("mousemove",e=>{
 
 document.addEventListener("touchmove", e => {
   if(draggingNode) {
-      e.preventDefault(); // Stop screen scrolling when dragging
+      e.preventDefault(); 
       const cc = clientToCanvas(e.touches[0].clientX, e.touches[0].clientY);
       draggingNode.x = cc.x - dragOffset.x; draggingNode.y = cc.y - dragOffset.y;
       const el = getNodeEl(draggingNode.id);
@@ -1757,7 +1958,7 @@ document.addEventListener("touchend", e => {
 
 // Canvas Pan & Lasso (Mouse)
 canvasWrapper.addEventListener("mousedown",e=>{
-  if(e.target.closest(".node")||e.target.classList.contains("edge")||e.target.closest("#input-bar")||e.target.closest(".suggestion-btn")||e.target.closest(".group-hull")||e.target.closest("#top-bar")||e.target.closest("#zoom-controls"))return;
+  if(e.target.closest(".node")||e.target.classList.contains("edge")||e.target.closest("#input-bar")||e.target.closest(".suggestion-btn")||e.target.closest(".group-hull")||e.target.closest("#top-bar")||e.target.closest("#zoom-controls")||e.target.closest("#chat-window"))return;
   if(e.shiftKey) {
     isLassoing=true; const cc=clientToCanvas(e.clientX, e.clientY); lassoStartX=cc.x; lassoStartY=cc.y;
     lassoBox.style.left=(lassoStartX*currentScale)+"px"; lassoBox.style.top=(lassoStartY*currentScale)+"px"; lassoBox.style.width="0px"; lassoBox.style.height="0px"; lassoBox.style.display="block"; return;
@@ -1823,7 +2024,7 @@ canvasWrapper.addEventListener("touchend", e => {
 });
 
 function deselectAll(){ nodes.forEach(n=>n.selected=false); canvas.querySelectorAll(".node").forEach(el=>el.classList.remove("selected")); updateSuggestionsDebounced(); explicitlyDeselected=true; }
-document.addEventListener("click",e=>{ if(!canvas.contains(e.target)&&!document.getElementById("top-bar").contains(e.target)&&!document.getElementById("input-bar").contains(e.target)&&!suggestionsBar.contains(e.target)&&!colorPickerPopup.contains(e.target)){deselectAll();hasActiveContext=false;} });
+document.addEventListener("click",e=>{ if(!canvas.contains(e.target)&&!document.getElementById("top-bar").contains(e.target)&&!document.getElementById("input-bar").contains(e.target)&&!suggestionsBar.contains(e.target)&&!colorPickerPopup.contains(e.target)&&!document.getElementById("chat-window").contains(e.target)){deselectAll();hasActiveContext=false;} });
 
 function getSmartSpawnPos(){
   const sel=getSelectedNodes(); if(sel.length>0){const maxX=Math.max(...sel.map(n=>n.x));const avgY=sel.reduce((s,n)=>s+n.y,0)/sel.length;return{x:maxX+380,y:avgY};}
@@ -1929,28 +2130,40 @@ async function updateSuggestions(){
 
 // ── Save / Load ───────────────────────────────────────────────────────────────
 function saveGraph(){
+  if(SHARE_ID === 'guest') return;
+  
+  showSyncing();
+  
   const graphData = {
-    nodes:nodes.map(n=>({id:n.id,x:n.x,y:n.y,type:n.type,text:n.text,dim:n.dim||0,meta:{topic:n.meta.topic||"",seconds:n.meta.seconds||0,label:n.meta.label||"",title:n.meta.title||"",w:n.meta.w||null,h:n.meta.h||null},completed:!!n.completed,groupId:n.groupId})),
+    nodes:nodes.map(n=>({id:n.id,x:n.x,y:n.y,type:n.type,text:n.text,dim:n.dim||0,meta:{topic:n.meta.topic||"",seconds:n.meta.seconds||0,label:n.meta.label||"",title:n.meta.title||"",w:n.meta.w||null,h:n.meta.h||null,pinned:n.meta.pinned},completed:!!n.completed,groupId:n.groupId})),
     links:links.map(l=>({id:l.id,sourceId:l.sourceId,targetId:l.targetId})),
-    groups:groups.map(g=>({id:g.id,name:g.name,color:g.color,nodeIds:[...g.nodeIds],collapsed:!!g.collapsed,collapsedW:g.collapsedW||160,collapsedH:g.collapsedH||60,collapsedX:g.collapsedX,collapsedY:g.collapsedY,savedPositions:g.savedPositions})),
+    groups:groups.map(g=>({id:g.id,name:g.name,color:g.color,pinned:g.pinned,nodeIds:[...g.nodeIds],collapsed:!!g.collapsed,collapsedW:g.collapsedW||160,collapsedH:g.collapsedH||60,collapsedX:g.collapsedX,collapsedY:g.collapsedY,savedPositions:g.savedPositions})),
+    chat:chatMessages,
     nextNodeId,nextLinkId,nextGroupId
   };
   if(socket) {
     socket.emit("graph_update", { room: SHARE_ID, graph: graphData });
   }
+  
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(showSynced, 600);
 }
+
 async function loadGraph(){
+  if(SHARE_ID === 'guest') return;
   try{
     const res=await fetch(`/api/board/load/${SHARE_ID}`);
     if(!res.ok)return;
     const data=await res.json();if(!data||!data.nodes)return;
     nodes=data.nodes||[];links=data.links||[];groups=data.groups||[];
+    chatMessages=data.chat||[]; renderChat();
     groups.forEach(g=>{if(!g.collapsedW)g.collapsedW=160;if(!g.collapsedH)g.collapsedH=60;});
     nextNodeId=data.nextNodeId||(Math.max(0,...nodes.map(n=>n.id))+1);
     nextLinkId=data.nextLinkId||(Math.max(0,...links.map(l=>l.id))+1);
     nextGroupId=data.nextGroupId||(Math.max(0,...(groups.length?groups.map(g=>g.id):[0]))+1);
     canvas.querySelectorAll(".node,.group-hull,.group-label,.group-collapse-btn").forEach(el=>el.remove());
     nodes.forEach(n=>{if(!n.meta)n.meta={};createNodeElement(n);}); redrawLinks();redrawGroups();
+    showSynced();
   }catch(e){console.warn("load failed",e);}
 }
 
@@ -1958,6 +2171,11 @@ async function sendPrompt(){
   const raw=promptEl.value.trim();if(!raw)return; hideSlashPopup();
   if(raw.startsWith("/find ")){await runFindCommand(raw.slice(6).trim());promptEl.value="";return;}
   if(raw==="/undo"){undo();promptEl.value="";return;} if(raw==="/redo"){redo();promptEl.value="";return;}
+  if(raw==="/pinned"){
+      nodes.forEach(n => { if(n.meta?.pinned) { const el = getNodeEl(n.id); el?.classList.add("find-focus"); setTimeout(()=>el?.classList.remove("find-focus"), 4000); }});
+      groups.forEach(g => { if(g.pinned) { const el = getGroupEl(g.id); el?.classList.add("pinned-highlight"); setTimeout(()=>el?.classList.remove("pinned-highlight"), 4000); }});
+      promptEl.value=""; return;
+  }
   if(raw.startsWith("/delete")){runDeleteCommand(raw.slice(7));promptEl.value="";return;}
   
   dimAllNodes(); const cls=await classifyInput(raw); const ctx=buildContext(); const spawn=getSmartSpawnPos();
@@ -1966,7 +2184,6 @@ async function sendPrompt(){
   
   const qn = addNode(raw, "question", spawn.x, spawn.y); lastQuestionNodeId = qn.id;
   
-  // Show thinking node immediately
   const an = addNode("", "answer", spawn.x+340, spawn.y); 
   addLink(qn.id, an.id);
   const anel = getNodeEl(an.id); 
@@ -1978,11 +2195,9 @@ async function sendPrompt(){
   
   promptEl.value="";
   
-  // Fetch AI Response
   const r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:raw,context:ctx})}); 
   const d=await r.json();
   
-  // Update node with actual answer
   an.text = d.reply || "";
   if(anel) anel.classList.remove("is-thinking");
   updateNodeTextDOM(an);
@@ -2002,6 +2217,7 @@ loadGraph().then(()=>{ if(nodes.length>0||groups.some(g=>g.collapsed)){ setTimeo
 
 // ── Dashboard / Multiple Canvases ─────────────────────────────────────────────
 document.getElementById("dash-btn").onclick = async () => {
+  if (SHARE_ID === 'guest') { alert("Please sign in or sign up to save and view canvases."); return; }
   document.getElementById("dash-modal").classList.add("visible");
   const myList = document.getElementById("my-dash-list");
   const sharedList = document.getElementById("shared-dash-list");
@@ -2079,9 +2295,156 @@ document.getElementById("new-canvas-btn").onclick = async () => {
 };
 
 // ── Collaboration (WebSockets) ────────────────────────────────────────────────
-socket.on("connect", () => {
-  socket.emit("join", { room: SHARE_ID });
-});
+if (socket) {
+    socket.on("connect", () => {
+      socket.emit("join", { room: SHARE_ID });
+    });
+
+    socket.on("presence_update", (users) => {
+      const pb = document.getElementById("presence-bar");
+      pb.innerHTML = "";
+      users.forEach((u, i) => {
+        const init = (u.email || "A").substring(0, 1).toUpperCase();
+        const av = document.createElement("div");
+        av.className = "presence-avatar";
+        av.style.background = u.color || "#7c3aed";
+        av.style.zIndex = users.length - i;
+        av.title = u.email + (u.email === currentUserEmail ? " (You)" : " - Click to jump");
+        av.textContent = init;
+        if (u.email !== currentUserEmail) av.onclick = () => jumpToUser(u.email);
+        pb.appendChild(av);
+      });
+
+      if (users.length > 1) {
+          document.getElementById("chat-btn").style.display = "flex";
+      } else {
+          document.getElementById("chat-btn").style.display = "none";
+          document.getElementById("chat-window").classList.remove("visible");
+      }
+    });
+
+    socket.on("cursor_update", (c) => {
+      let cursor = remoteCursors[c.id];
+      userLastPositions[c.email] = {x: c.x, y: c.y};
+      if (!cursor) {
+        cursor = document.createElement("div");
+        cursor.className = "remote-cursor";
+        cursor.innerHTML = `
+          <svg viewBox="0 0 16 16" fill="${c.color}">
+            <path d="M1 1l6 14 2-5 5-2L1 1z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>
+          <div class="remote-cursor-label" style="background: ${c.color}">${c.email.split('@')[0]}</div>
+        `;
+        document.getElementById("link-layer").parentElement.appendChild(cursor);
+        remoteCursors[c.id] = cursor;
+      }
+      cursor.style.left = c.x + "px";
+      cursor.style.top = c.y + "px";
+    });
+
+    socket.on("cursor_remove", (data) => {
+      if (remoteCursors[data.id]) {
+        remoteCursors[data.id].remove();
+        delete remoteCursors[data.id];
+      }
+    });
+
+    socket.on("collab_removed", (data) => {
+      if (data.email === currentUserEmail) {
+          alert("Your access to this canvas has been revoked by the owner.");
+          window.location.href = "/";
+      } else {
+          fetchCollaborators();
+      }
+    });
+
+    socket.on("node_move", data => {
+      const n = nodes.find(x => x.id === data.id);
+      if (n && (!draggingNode || draggingNode.id !== n.id)) {
+          n.x = data.x; n.y = data.y;
+          const el = getNodeEl(n.id);
+          if (el) { el.style.left = n.x + "px"; el.style.top = n.y + "px"; }
+          redrawLinks();
+      }
+    });
+
+    socket.on("node_text", data => {
+      const n = nodes.find(x => x.id === data.id);
+      if (n) {
+          n.text = data.text;
+          if(data.title !== undefined) n.meta.title = data.title;
+          if(data.topic !== undefined) n.meta.topic = data.topic;
+          updateNodeTextDOM(n);
+      }
+    });
+
+    socket.on("group_action", data => {
+        if(data.action === "collapse") collapseGroup(data.gid, false);
+        if(data.action === "expand") expandGroup(data.gid, true, false);
+    });
+
+    socket.on("graph_sync", (graphData) => {
+      const incomingNodes = new Map(graphData.nodes.map(n => [n.id, n]));
+      
+      nodes = nodes.filter(n => {
+        if (!incomingNodes.has(n.id)) {
+          const el = getNodeEl(n.id); if(el) el.remove(); return false;
+        }
+        return true;
+      });
+
+      graphData.nodes.forEach(inNode => {
+        const exist = nodes.find(n => n.id === inNode.id);
+        if (exist) {
+           const isDragging = draggingNode && draggingNode.id === exist.id;
+           const isEditing = document.activeElement && document.activeElement.closest(`.node[data-id="${exist.id}"]`);
+           
+           let structuralChange = false;
+           if (exist.type !== inNode.type || exist.groupId !== inNode.groupId) {
+               structuralChange = true;
+           }
+
+           if (!isDragging) { exist.x = inNode.x; exist.y = inNode.y; }
+           if (!isEditing) { exist.text = inNode.text; exist.meta = inNode.meta; exist.completed = inNode.completed; }
+           exist.type = inNode.type; exist.groupId = inNode.groupId;
+           
+           const el = getNodeEl(exist.id);
+           if (el) {
+             if(structuralChange) { 
+                 el.remove(); 
+                 createNodeElement(exist); 
+             } else {
+                 if(!isDragging) { el.style.left = exist.x + "px"; el.style.top = exist.y + "px"; }
+                 if(!isEditing) { updateNodeTextDOM(exist); if(exist.completed) el.classList.add("completed"); else el.classList.remove("completed"); }
+                 if(exist.meta?.pinned) el.classList.add("pinned-highlight"); else el.classList.remove("pinned-highlight");
+             }
+           }
+        } else {
+           nodes.push(inNode); createNodeElement(inNode);
+        }
+      });
+      
+      links = graphData.links; redrawLinks();
+      groups = graphData.groups; redrawGroups();
+      
+      if (graphData.chat) {
+          chatMessages = graphData.chat;
+          renderChat();
+      }
+
+      nextNodeId = graphData.nextNodeId; nextLinkId = graphData.nextLinkId; nextGroupId = graphData.nextGroupId;
+    });
+
+    let lastCursorSync = 0;
+    canvasWrapper.addEventListener("mousemove", e => {
+      const now = Date.now();
+      if (now - lastCursorSync > 50) {
+        const cc = clientToCanvas(e.clientX, e.clientY);
+        socket.emit("cursor_move", { room: SHARE_ID, x: cc.x, y: cc.y });
+        lastCursorSync = now;
+      }
+    });
+}
 
 function jumpToUser(email) {
   if (userLastPositions[email]) {
@@ -2089,140 +2452,9 @@ function jumpToUser(email) {
   }
 }
 
-socket.on("presence_update", (users) => {
-  const pb = document.getElementById("presence-bar");
-  pb.innerHTML = "";
-  users.forEach((u, i) => {
-    const init = (u.email || "A").substring(0, 1).toUpperCase();
-    const av = document.createElement("div");
-    av.className = "presence-avatar";
-    av.style.background = u.color || "#7c3aed";
-    av.style.zIndex = users.length - i;
-    av.title = u.email + (u.email === currentUserEmail ? " (You)" : " - Click to jump");
-    av.textContent = init;
-    if (u.email !== currentUserEmail) av.onclick = () => jumpToUser(u.email);
-    pb.appendChild(av);
-  });
-});
-
-socket.on("cursor_update", (c) => {
-  let cursor = remoteCursors[c.id];
-  userLastPositions[c.email] = {x: c.x, y: c.y};
-  if (!cursor) {
-    cursor = document.createElement("div");
-    cursor.className = "remote-cursor";
-    cursor.innerHTML = `
-      <svg viewBox="0 0 16 16" fill="${c.color}">
-        <path d="M1 1l6 14 2-5 5-2L1 1z" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/>
-      </svg>
-      <div class="remote-cursor-label" style="background: ${c.color}">${c.email.split('@')[0]}</div>
-    `;
-    document.getElementById("link-layer").parentElement.appendChild(cursor);
-    remoteCursors[c.id] = cursor;
-  }
-  cursor.style.left = c.x + "px";
-  cursor.style.top = c.y + "px";
-});
-
-socket.on("cursor_remove", (data) => {
-  if (remoteCursors[data.id]) {
-    remoteCursors[data.id].remove();
-    delete remoteCursors[data.id];
-  }
-});
-
-socket.on("collab_removed", (data) => {
-  if (data.email === currentUserEmail) {
-      alert("Your access to this canvas has been revoked by the owner.");
-      window.location.href = "/";
-  } else {
-      fetchCollaborators();
-  }
-});
-
-socket.on("node_move", data => {
-  const n = nodes.find(x => x.id === data.id);
-  if (n && (!draggingNode || draggingNode.id !== n.id)) {
-      n.x = data.x; n.y = data.y;
-      const el = getNodeEl(n.id);
-      if (el) { el.style.left = n.x + "px"; el.style.top = n.y + "px"; }
-      redrawLinks();
-  }
-});
-
-socket.on("node_text", data => {
-  const n = nodes.find(x => x.id === data.id);
-  if (n) {
-      n.text = data.text;
-      if(data.title !== undefined) n.meta.title = data.title;
-      if(data.topic !== undefined) n.meta.topic = data.topic;
-      updateNodeTextDOM(n);
-  }
-});
-
-socket.on("group_action", data => {
-    if(data.action === "collapse") collapseGroup(data.gid, false);
-    if(data.action === "expand") expandGroup(data.gid, true, false);
-});
-
-socket.on("graph_sync", (graphData) => {
-  const incomingNodes = new Map(graphData.nodes.map(n => [n.id, n]));
-  
-  nodes = nodes.filter(n => {
-    if (!incomingNodes.has(n.id)) {
-      const el = getNodeEl(n.id); if(el) el.remove(); return false;
-    }
-    return true;
-  });
-
-  graphData.nodes.forEach(inNode => {
-    const exist = nodes.find(n => n.id === inNode.id);
-    if (exist) {
-       const isDragging = draggingNode && draggingNode.id === exist.id;
-       const isEditing = document.activeElement && document.activeElement.closest(`.node[data-id="${exist.id}"]`);
-       
-       let structuralChange = false;
-       if (exist.type !== inNode.type || exist.groupId !== inNode.groupId) {
-           structuralChange = true;
-       }
-
-       if (!isDragging) { exist.x = inNode.x; exist.y = inNode.y; }
-       if (!isEditing) { exist.text = inNode.text; exist.meta = inNode.meta; exist.completed = inNode.completed; }
-       exist.type = inNode.type; exist.groupId = inNode.groupId;
-       
-       const el = getNodeEl(exist.id);
-       if (el) {
-         if(structuralChange) { 
-             el.remove(); 
-             createNodeElement(exist); 
-         } else {
-             if(!isDragging) { el.style.left = exist.x + "px"; el.style.top = exist.y + "px"; }
-             if(!isEditing) { updateNodeTextDOM(exist); if(exist.completed) el.classList.add("completed"); else el.classList.remove("completed"); }
-         }
-       }
-    } else {
-       nodes.push(inNode); createNodeElement(inNode);
-    }
-  });
-  
-  links = graphData.links; redrawLinks();
-  groups = graphData.groups; redrawGroups();
-
-  nextNodeId = graphData.nextNodeId; nextLinkId = graphData.nextLinkId; nextGroupId = graphData.nextGroupId;
-});
-
-let lastCursorSync = 0;
-canvasWrapper.addEventListener("mousemove", e => {
-  const now = Date.now();
-  if (now - lastCursorSync > 50) {
-    const cc = clientToCanvas(e.clientX, e.clientY);
-    socket.emit("cursor_move", { room: SHARE_ID, x: cc.x, y: cc.y });
-    lastCursorSync = now;
-  }
-});
-
 // ── Share & Collaboration Management ──────────────────────────────────────────
 async function fetchCollaborators() {
+  if (SHARE_ID === 'guest') return;
   try {
     const res = await fetch(`/api/collaborators/${SHARE_ID}`);
     const data = await res.json();
@@ -2251,12 +2483,13 @@ window.removeCollab = async function(email) {
             body: JSON.stringify({ share_id: SHARE_ID, email: email })
         });
         const d = await res.json();
-        if (d.ok) fetchCollaborators(); // Socket emit takes care of kicking them
+        if (d.ok) fetchCollaborators(); 
         else alert(d.error || "Could not remove user.");
     } catch(e) {}
 };
 
 document.getElementById("share-btn").onclick = async () => {
+  if (SHARE_ID === 'guest') { alert("Sign in or Sign up to share canvases!"); return; }
   const input = document.getElementById("share-link-input");
   input.value = window.location.href;
   fetchCollaborators();
@@ -2300,7 +2533,9 @@ def index():
     if "user_id" not in session: 
         session["next_url"] = "/"
         return redirect("/login")
-    
+    if session["user_id"] == -1:
+        return redirect("/b/guest")
+        
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT share_id FROM graphs WHERE user_id=%s ORDER BY updated_at DESC LIMIT 1", (session["user_id"],))
@@ -2375,12 +2610,10 @@ def brainstorm():
     if "user_id" not in session: return jsonify({"error":"unauthorized"}),401
     d = request.get_json()
     topic = d.get("topic", "")
-    sys = ('You are a brainstorm assistant. Analyze the complexity of the topic. '
-           'For simple topics, generate a small, shallow tree (1 level deep, 2-3 children). '
-           'For complex topics, generate a larger, multi-level tree (up to 3 levels deep, branching out dynamically). '
-           'Adapt the depth and width dynamically based on what the topic actually requires to explore it properly. '
-           'Format: {"topic": "Root idea", "children": [{"topic": "Sub idea 1", "children": [...]}, ...]} '
-           'Return ONLY a valid JSON object representing this tree. No markdown formatting.')
+    sys = ('You are a brainstorm assistant. Provide concise, high-quality ideas. '
+           'Limit generation: Do not spam nodes. Max 4-6 nodes total unless instructed otherwise. '
+           'Format: {"topic": "Root idea", "children": [{"topic": "Sub idea 1", "children": [...]}]} '
+           'Return ONLY a valid JSON object. No markdown formatting.')
     try:
         raw = call_groq([{"role": "system", "content": sys}, {"role": "user", "content": topic}])
         clean = raw.strip().strip("```json").strip("```").strip()
@@ -2390,7 +2623,6 @@ def brainstorm():
     except Exception as e:
         pass
     
-    # Fallback structure
     return jsonify({"tree": {"topic": topic, "children": [
         {"topic": f"{topic} concept 1", "children": []},
         {"topic": f"{topic} concept 2", "children": []},
@@ -2400,6 +2632,7 @@ def brainstorm():
 @app.route("/save_settings", methods=["POST"])
 def save_settings():
     if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if session["user_id"] == -1: return jsonify({"ok": True})
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2421,6 +2654,7 @@ def save_settings():
 @app.route("/load_settings", methods=["GET"])
 def load_settings():
     if "user_id" not in session: return jsonify({}), 401
+    if session["user_id"] == -1: return jsonify({})
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2438,7 +2672,7 @@ def classify():
     return jsonify(classify_with_groq(request.get_json().get("input","")))
 
 @app.route("/chat",methods=["POST"])
-def chat():
+def do_chat():
     if "user_id" not in session:return jsonify({"error":"unauthorized"}),401
     d=request.get_json()
     return jsonify({"reply":chat_with_groq(d.get("prompt",""),d.get("context",""))})
@@ -2468,6 +2702,10 @@ def board(share_id):
     if "user_id" not in session: 
         session["next_url"] = f"/b/{share_id}"
         return redirect("/login")
+        
+    if share_id == "guest":
+        html = INDEX_HTML.replace("$$SHARE_ID$$", "guest").replace("$$IS_OWNER$$", "true").replace("$$BOARD_TITLE$$", "Guest Canvas (Not Saved)")
+        return Response(html, mimetype="text/html")
         
     conn = get_db()
     cursor = conn.cursor()
@@ -2533,7 +2771,7 @@ def board(share_id):
 
 @app.route("/api/board/new", methods=["POST"])
 def create_board():
-    if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({"error": "unauthorized"}), 401
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2550,7 +2788,7 @@ def create_board():
 
 @app.route("/api/board/<share_id>", methods=["DELETE"])
 def delete_board(share_id):
-    if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({"error": "unauthorized"}), 401
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2572,6 +2810,7 @@ def delete_board(share_id):
 @app.route("/api/board/load/<share_id>", methods=["GET"])
 def load_shared(share_id):
     if "user_id" not in session: return jsonify({}), 401
+    if share_id == "guest": return jsonify({})
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2587,7 +2826,7 @@ def load_shared(share_id):
 
 @app.route("/api/board/title", methods=["POST"])
 def update_title():
-    if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({"error": "unauthorized"}), 401
     d = request.get_json()
     share_id = d.get("share_id")
     title = d.get("title", "Untitled Canvas")
@@ -2603,7 +2842,7 @@ def update_title():
 
 @app.route("/api/dashboard", methods=["GET"])
 def get_dashboard():
-    if "user_id" not in session: return jsonify({}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({}), 401
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2644,6 +2883,7 @@ def get_dashboard():
 @app.route("/api/collaborators/<share_id>", methods=["GET"])
 def get_collaborators(share_id):
     if "user_id" not in session: return jsonify({}), 401
+    if share_id == "guest": return jsonify({"collaborators": []})
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -2662,7 +2902,7 @@ def get_collaborators(share_id):
 
 @app.route("/share/invite", methods=["POST"])
 def invite_collaborator():
-    if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({"error": "unauthorized"}), 401
     d = request.get_json()
     email = d.get("email", "").strip().lower()
     share_id = d.get("share_id")
@@ -2693,7 +2933,7 @@ def invite_collaborator():
 
 @app.route("/share/remove", methods=["POST"])
 def remove_collaborator():
-    if "user_id" not in session: return jsonify({"error": "unauthorized"}), 401
+    if "user_id" not in session or session["user_id"] == -1: return jsonify({"error": "unauthorized"}), 401
     d = request.get_json()
     email = d.get("email", "").strip().lower()
     share_id = d.get("share_id")
@@ -2718,7 +2958,6 @@ def remove_collaborator():
         cursor.execute("DELETE FROM graph_collaborators WHERE graph_id=%s AND user_id=%s", (graph["id"], target_user["id"]))
         conn.commit()
         
-        # Emit socket event instantly kicking them out of the frontend board
         socketio.emit("collab_removed", {"email": email}, to=share_id)
             
         return jsonify({"ok": True})
@@ -2732,6 +2971,7 @@ connected_users = {} # room -> {sid: {email, color}}
 @socketio.on("join")
 def on_join(data):
     room = data.get("room")
+    if not room or room == "guest": return
     email = session.get("email", "Anonymous")
     join_room(room)
     if room not in connected_users:
@@ -2754,7 +2994,7 @@ def on_disconnect():
 @socketio.on("cursor_move")
 def on_cursor_move(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         emit("cursor_update", {
             "id": request.sid,
             "x": data.get("x"),
@@ -2766,31 +3006,37 @@ def on_cursor_move(data):
 @socketio.on("node_move")
 def on_node_move(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         emit("node_move", {"id": data.get("id"), "x": data.get("x"), "y": data.get("y")}, to=room, include_self=False)
 
 @socketio.on("node_text")
 def on_node_text(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         emit("node_text", data, to=room, include_self=False)
 
 @socketio.on("group_action")
 def on_group_action(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         emit("group_action", data, to=room, include_self=False)
 
 @socketio.on("title_update")
 def on_title_update(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         emit("title_update", data, to=room, include_self=False)
+
+@socketio.on("chat_message")
+def on_chat_message(data):
+    room = data.get("room")
+    if room and room != "guest":
+        emit("chat_message", data, to=room, include_self=False)
 
 @socketio.on("graph_update")
 def on_graph_update(data):
     room = data.get("room")
-    if room:
+    if room and room != "guest":
         conn = get_db()
         cursor = conn.cursor()
         try:
