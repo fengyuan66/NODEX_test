@@ -4,6 +4,7 @@ import { useGraph } from '../../hooks/useGraph';
 import { useCanvas } from '../../hooks/useCanvas';
 import { useSocket } from '../../hooks/useSocket';
 import { aiApi } from '../../api/client';
+import { apiErrorMessage } from '../../utils/apiError';
 import Node from './Node';
 import LinkLayer from './LinkLayer';
 import GroupHull from './GroupHull';
@@ -236,7 +237,8 @@ export default function Canvas({ shareId }: CanvasProps) {
           try {
             const res = await aiApi.merge(tgt?.text || '', src?.text || '');
             await mergeNodes(tgtId, srcId, res.data.merged || `${tgt?.text}\n${src?.text}`);
-          } catch (_) {
+          } catch (e) {
+            alert(apiErrorMessage(e, 'AI merge failed; using plain text instead.'));
             await mergeNodes(tgtId, srcId, `${tgt?.text}\n${src?.text}`);
           }
         }

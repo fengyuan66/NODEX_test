@@ -1,14 +1,12 @@
+import './loadEnv';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
-import dotenv from 'dotenv';
 
 import authRouter from './routes/auth';
 import graphRouter from './routes/graph';
 import aiRouter from './routes/ai';
 import settingsRouter from './routes/settings';
-
-dotenv.config();
 
 const app = express();
 
@@ -44,7 +42,8 @@ app.use('/', settingsRouter);
 const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 app.use(express.static(frontendDistPath));
 
-app.get('*', (req, res) => {
+// Express 5 / path-to-regexp: unnamed "*" is invalid; use a named splat for SPA fallback.
+app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(frontendDistPath, 'index.html'));
 });
 

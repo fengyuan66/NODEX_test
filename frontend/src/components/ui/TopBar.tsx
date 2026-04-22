@@ -6,6 +6,7 @@ interface TopBarProps {
   onGroup?: () => void;
   onNote?: () => void;
   onBrainstorm?: () => void;
+  onChat?: () => void;
   onShare?: () => void;
   onDash?: () => void;
   onSettings?: () => void;
@@ -13,7 +14,7 @@ interface TopBarProps {
 }
 
 export default function TopBar({
-  onStudy, onAuto, onGroup, onNote, onBrainstorm, onShare, onDash, onSettings, presenceBar
+  onStudy, onAuto, onGroup, onNote, onBrainstorm, onChat, onShare, onDash, onSettings, presenceBar
 }: TopBarProps) {
   const { user, logout } = useAuth();
 
@@ -32,6 +33,11 @@ export default function TopBar({
       <button className="top-btn" id="group-btn" onClick={onGroup}>Group</button>
       <button className="top-btn" id="note-btn" onClick={onNote}>Note</button>
       <button className="top-btn" id="brainstorm-btn" onClick={onBrainstorm}>Brainstorm</button>
+      {onChat && (
+        <button className="top-btn" id="chat-btn" type="button" onClick={onChat} title="New chat node on canvas">
+          Chat
+        </button>
+      )}
 
       <div id="presence-bar">{presenceBar}</div>
 

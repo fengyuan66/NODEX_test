@@ -1,6 +1,6 @@
 export interface GraphNode {
   id: number;
-  type: 'question' | 'answer' | 'note' | 'timer' | 'brainstorm';
+  type: 'question' | 'answer' | 'note' | 'timer' | 'brainstorm' | 'chat';
   text: string;
   x: number;
   y: number;
@@ -15,6 +15,8 @@ export interface GraphNode {
     w?: number | null;
     h?: number | null;
     label?: string;
+    /** Linear chat thread stored on canvas chat nodes */
+    chatHistory?: SidebarChatMessage[];
   };
 }
 
@@ -44,6 +46,11 @@ export interface GraphData {
   nextNodeId: number;
   nextLinkId: number;
   nextGroupId: number;
+}
+
+export interface SidebarChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export interface PresenceUser {

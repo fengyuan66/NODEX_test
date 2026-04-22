@@ -19,6 +19,8 @@ import ShareModal from '../components/ui/modals/ShareModal';
 import DashboardModal from '../components/ui/modals/DashboardModal';
 
 import type { PresenceUser } from '../types';
+import { apiErrorMessage } from '../utils/apiError';
+import { buildGraphContextPayload, nodeTextForContext } from '../utils/graphContext';
 
 interface CanvasPageProps {
   isShared: boolean;
@@ -88,16 +90,12 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
 
   const buildContext = useCallback(() => {
     const { nodes, lastNodeId } = useGraphStore.getState();
-    const sel = nodes.filter(n => n.selected);
-    if (!sel.length) {
-      if (lastNodeId !== null) {
-        const l = nodes.find(n => n.id === lastNodeId);
-        if (l && l.type !== "question") return l.text;
-      }
-      return "";
-    }
-    return sel.map(n => n.text).join('\n---\n');
+    return buildGraphContextPayload(nodes, lastNodeId);
   }, []);
+
+  const handleNewChatNode = useCallback(() => {
+    addNode('chat', 'New chat', undefined, undefined, { chatHistory: [] });
+  }, [addNode]);
 
   const [colorPicker, setColorPicker] = useState<{ x: number; y: number; editGroupId?: number; initialColor?: string; initialName?: string } | null>(null);
 
@@ -174,7 +172,7 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
     }
     if (raw.startsWith('/find ')) {
       const query = raw.slice(6).trim();
-      const descs = nodes.map(n => ({ id: n.id, text: (n.text || '').slice(0, 200) }));
+      const descs = nodes.map(n => ({ id: n.id, text: nodeTextForContext(n).slice(0, 200) }));
       try {
         const res = await aiApi.find(query, descs);
         if (res.data.nodeId) {
@@ -192,8 +190,13 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
     const ctx = buildContext();
     const spawn = getSmartSpawnPos();
 
-    let cls: { type: string; seconds?: number } = { type: 'ai_command' };
-    try { const r = await aiApi.classify(raw); cls = r.data; } catch (_) {}
+    let cls: { type: string; seconds?: number } = { type: 'question' };
+    try {
+      const r = await aiApi.classify(raw);
+      cls = r.data;
+    } catch (e) {
+      console.warn('[classify]', apiErrorMessage(e, 'classify failed'));
+    }
 
     if (cls.type === 'timer' && cls.seconds) {
       addNode('timer', `timer ${cls.seconds}s`, spawn.x, spawn.y, { seconds: cls.seconds });
@@ -213,7 +216,11 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
       }));
       // Get suggestions
       aiApi.suggest(raw, r.data.reply || '').then(sr => setSuggestions(sr.data.suggestions?.slice(0, 3) || [])).catch(() => {});
-    } catch (_) {}
+    } catch (e) {
+      const msg = apiErrorMessage(e, 'AI request failed.');
+      alert(msg);
+      console.error('[chat]', e);
+    }
     await saveGraph();
   }, [addNode, addLink, deleteNode, dimAllNodes, buildContext, getSmartSpawnPos, saveGraph]);
 
@@ -225,7 +232,10 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
       const r = await aiApi.chat('Create a short focused study drill or quiz. Keep it concise.', ctx);
       addNode('answer', r.data.reply || '', spawn.x, spawn.y);
       await saveGraph();
-    } catch (_) {}
+    } catch (e) {
+      alert(apiErrorMessage(e, 'Study drill request failed.'));
+      console.error('[study]', e);
+    }
   };
 
   const handleNote = () => {
@@ -275,6 +285,7 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
         onStudy={handleStudy}
         onNote={handleNote}
         onBrainstorm={handleBrainstorm}
+        onChat={handleNewChatNode}
         onAuto={autoLayout}
         onGroup={triggerGroupUI}
         presenceBar={<PresenceBar users={presenceUsers} />}

@@ -1,26 +1,118 @@
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+/** Production default; override with GROQ_MODEL. Preview IDs can fail for some accounts or regions. */
+const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
-async function callGroq(messages: Message[]): Promise<string> {
-  const response = await axios.post(
-    GROQ_URL,
-    { model: GROQ_MODEL, messages },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      timeout: 60000,
+function groqModel(): string {
+  const m = (process.env.GROQ_MODEL || DEFAULT_GROQ_MODEL).trim();
+  return m || DEFAULT_GROQ_MODEL;
+}
+
+/** Normalize key from .env (BOM, quotes, CR/LF, zero-width chars). */
+export function getGroqApiKey(): string {
+  let raw = process.env.GROQ_API_KEY ?? '';
+  raw = raw.replace(/^\uFEFF/, '');
+  raw = raw.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  raw = raw.replace(/\r/g, '');
+  raw = raw.trim();
+  raw = raw.replace(/^['"]|['"]$/g, '').trim();
+  // Groq keys are `gsk_` + letters/digits only; trailing paste junk often inflates length.
+  const token = raw.match(/^(gsk_[A-Za-z0-9]+)/);
+  if (token) {
+    return token[1];
+  }
+  return raw;
+}
+
+function requireGroqKey(): void {
+  if (!getGroqApiKey()) {
+    throw new Error(
+      'GROQ_API_KEY is missing. Add it to backend/.env or the repo-root .env (see backend/.env.example).'
+    );
+  }
+}
+
+function formatGroqFailure(err: unknown): string {
+  if (isAxiosError(err)) {
+    const data = err.response?.data as { error?: { message?: string } } | undefined;
+    const groqMsg = data?.error?.message;
+    if (groqMsg) return groqMsg;
+    const status = err.response?.status;
+    if (status) return `Groq HTTP ${status}: ${err.message}`;
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+function groqAuthError(err: unknown): boolean {
+  if (!isAxiosError(err)) return false;
+  if (err.response?.status === 401) return true;
+  const msg = (err.response?.data as { error?: { message?: string } } | undefined)?.error?.message ?? '';
+  return /invalid\s+api\s*key/i.test(msg);
+}
+
+/** Safe default for logs. Set GROQ_DEBUG_PRINT_FULL_KEY=1 to log the exact string (do not commit logs). */
+function maskGroqKeyForLog(key: string): string {
+  if (!key) return '(empty after normalize)';
+  if (key.length <= 12) return `${key.length} chars, starts with ${JSON.stringify(key.slice(0, 3))}`;
+  return `${key.slice(0, 8)}…${key.slice(-4)} (${key.length} chars)`;
+}
+
+function logReceivedKeyIfInvalidApiKey(err: unknown): void {
+  if (!groqAuthError(err)) return;
+  const key = getGroqApiKey();
+  const full =
+    process.env.GROQ_DEBUG_PRINT_FULL_KEY === '1' ||
+    process.env.GROQ_DEBUG_PRINT_FULL_KEY === 'true' ||
+    process.env.GROQ_DEBUG_PRINT_FULL_KEY === 'yes';
+  if (full) {
+    console.warn('[groq] Invalid API key — GROQ_API_KEY value as received (remove GROQ_DEBUG_PRINT_FULL_KEY when done):');
+    console.warn(key);
+  } else {
+    console.warn('[groq] Invalid API key — GROQ_API_KEY as received (masked). To log the full value locally, set GROQ_DEBUG_PRINT_FULL_KEY=1 in .env:');
+    console.warn(maskGroqKeyForLog(key));
+    console.warn('[groq] Last 8 chars JSON-escaped (spot hidden \\r, spaces, or quotes):', JSON.stringify(key.slice(-8)));
+    if (key.length > 53 || key.length < 48) {
+      console.warn(
+        '[groq] Groq keys are usually ~51 characters after cleanup. If length is off, re-paste the key on one line with no spaces around `=`.'
+      );
     }
-  );
-  return response.data.choices[0].message.content as string;
+  }
+}
+
+async function callGroq(messages: Message[]): Promise<string> {
+  requireGroqKey();
+  try {
+    const response = await axios.post(
+      GROQ_URL,
+      {
+        model: groqModel(),
+        messages,
+        max_tokens: 4096,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${getGroqApiKey()}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 60000,
+      }
+    );
+    const content = response.data?.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || !content.trim()) {
+      throw new Error('Groq returned an empty reply.');
+    }
+    return content;
+  } catch (err) {
+    logReceivedKeyIfInvalidApiKey(err);
+    throw new Error(formatGroqFailure(err));
+  }
 }
 
 export async function classifyWithGroq(userInput: string): Promise<Record<string, unknown>> {

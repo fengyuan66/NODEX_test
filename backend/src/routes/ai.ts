@@ -16,7 +16,7 @@ router.post('/classify', requireAuth, async (req: Request, res: Response): Promi
     const result = await classifyWithGroq(req.body.input || '');
     res.json(result);
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -25,7 +25,7 @@ router.post('/chat', requireAuth, async (req: Request, res: Response): Promise<v
     const reply = await chatWithGroq(req.body.prompt || '', req.body.context || '');
     res.json({ reply });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -33,7 +33,8 @@ router.post('/suggest', requireAuth, async (req: Request, res: Response): Promis
   try {
     const suggestions = await suggestWithGroq(req.body.prompt || '', req.body.context || '');
     res.json({ suggestions });
-  } catch (_) {
+  } catch (e) {
+    console.warn('[ai/suggest]', e);
     res.json({ suggestions: [] });
   }
 });
@@ -43,7 +44,7 @@ router.post('/merge', requireAuth, async (req: Request, res: Response): Promise<
     const merged = await mergeWithGroq(req.body.a || '', req.body.b || '');
     res.json({ merged });
   } catch (e) {
-    res.status(500).json({ error: String(e) });
+    res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 
@@ -60,8 +61,8 @@ router.post('/brainstorm', requireAuth, async (req: Request, res: Response): Pro
   try {
     const nodes = await brainstormWithGroq(req.body.topic || '');
     res.json({ nodes });
-  } catch (_) {
-    res.json({ nodes: [] });
+  } catch (e) {
+    res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
   }
 });
 

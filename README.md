@@ -1,5 +1,7 @@
 # SecondBrain — Deploy to Render (Free)
 
+DO NOT TRUST THIS!!!! THIS IS DEPRICATED
+
 ## Files
 - `app.py` — the full Flask app
 - `requirements.txt` — Python deps

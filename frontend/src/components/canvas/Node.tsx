@@ -2,6 +2,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { GraphNode } from '../../types';
 import { useGraphStore } from '../../store/graphStore';
 import { aiApi } from '../../api/client';
+import { apiErrorMessage } from '../../utils/apiError';
+import {
+  buildContextExcludingNode,
+  chatHistoryFromMeta,
+  previewChatLabel,
+} from '../../utils/graphContext';
 
 interface NodeProps {
   node: GraphNode;
@@ -85,6 +91,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
   const [localTitle, setLocalTitle] = useState(node.meta?.title || '');
   const [localTopic, setLocalTopic] = useState(node.meta?.topic || '');
   const [brainstormRunning, setBrainstormRunning] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatDraft, setChatDraft] = useState('');
   const dimClass = `dim-${node.dim || 0}`;
 
   useEffect(() => {
@@ -118,6 +127,57 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       }));
     }
   };
+
+  const sendChatFromNode = useCallback(async () => {
+    if (node.type !== 'chat') return;
+    const trimmed = chatDraft.trim();
+    if (!trimmed || chatBusy) return;
+    const fresh = useGraphStore.getState().nodes.find(n => n.id === node.id);
+    const prior = chatHistoryFromMeta(fresh?.meta);
+    const pending = [...prior, { role: 'user' as const, content: trimmed }];
+    setChatDraft('');
+    useGraphStore.setState(s => ({
+      nodes: s.nodes.map(n =>
+        n.id === node.id
+          ? { ...n, meta: { ...n.meta, chatHistory: pending }, text: previewChatLabel(pending) }
+          : n
+      ),
+    }));
+    onSave();
+    setChatBusy(true);
+    try {
+      const transcriptBefore = pending
+        .slice(0, -1)
+        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+        .join('\n\n');
+      const { nodes: allNodes, lastNodeId } = useGraphStore.getState();
+      const canvasCtx = buildContextExcludingNode(node.id, allNodes, lastNodeId);
+      const parts: string[] = [];
+      if (canvasCtx) parts.push('Canvas reference:\n' + canvasCtx);
+      if (transcriptBefore) parts.push('Earlier in this chat:\n' + transcriptBefore);
+      const context = parts.join('\n---\n');
+      const r = await aiApi.chat(trimmed, context);
+      const after = [...pending, { role: 'assistant' as const, content: r.data.reply || '' }];
+      useGraphStore.setState(s => ({
+        nodes: s.nodes.map(n =>
+          n.id === node.id
+            ? { ...n, meta: { ...n.meta, chatHistory: after }, text: previewChatLabel(after) }
+            : n
+        ),
+      }));
+      onSave();
+    } catch (e) {
+      alert(apiErrorMessage(e, 'Chat failed.'));
+      useGraphStore.setState(s => ({
+        nodes: s.nodes.map(n =>
+          n.id === node.id ? { ...n, meta: { ...n.meta, chatHistory: prior }, text: previewChatLabel(prior) } : n
+        ),
+      }));
+      onSave();
+    } finally {
+      setChatBusy(false);
+    }
+  }, [node.type, node.id, chatDraft, chatBusy, onSave]);
 
   const typeClass = `node-${node.type}`;
   const selectedClass = node.selected ? 'selected' : '';
@@ -204,6 +264,75 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       );
     }
 
+    if (node.type === 'chat') {
+      const history = chatHistoryFromMeta(node.meta);
+      const label = previewChatLabel(history);
+
+      if (!chatPanelOpen) {
+        return (
+          <div className="node-text" title="Double-click node to open chat">
+            <div className="chat-compact bubble">
+              <div className="chat-compact-hint">Double-click to continue</div>
+              <div className="chat-compact-body">{label}</div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="node-text" onMouseDown={e => e.stopPropagation()}>
+          <div className="chat-wrap bubble">
+            <div className="chat-wrap-head">
+              <button type="button" className="chat-wrap-btn" onClick={() => setChatPanelOpen(false)}>Close</button>
+              <button
+                type="button"
+                className="chat-wrap-btn"
+                disabled={chatBusy || !history.length}
+                onClick={() => {
+                  useGraphStore.setState(s => ({
+                    nodes: s.nodes.map(n =>
+                      n.id === node.id ? { ...n, meta: { ...n.meta, chatHistory: [] }, text: 'New chat' } : n
+                    ),
+                  }));
+                  onSave();
+                }}
+              >
+                Clear
+              </button>
+            </div>
+            <div className="chat-wrap-msgs">
+              {history.map((m, i) => (
+                <div key={i} className={`chat-wrap-line chat-wrap-${m.role}`}>
+                  <span className="chat-wrap-role">{m.role === 'user' ? 'You' : 'Model'}</span>
+                  <span className="chat-wrap-txt">{m.content}</span>
+                </div>
+              ))}
+              {chatBusy && <div className="chat-wrap-line chat-wrap-assistant muted">…</div>}
+            </div>
+            <div className="chat-wrap-inputrow">
+              <textarea
+                className="chat-wrap-input"
+                rows={2}
+                placeholder="Message…"
+                value={chatDraft}
+                disabled={chatBusy}
+                onChange={e => setChatDraft(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void sendChatFromNode();
+                  }
+                }}
+              />
+              <button type="button" className="chat-wrap-send" disabled={chatBusy || !chatDraft.trim()} onClick={() => void sendChatFromNode()}>
+                ↑
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (node.type === 'brainstorm') {
       return (
         <div className="node-text">
@@ -240,7 +369,10 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
                   window.dispatchEvent(new CustomEvent('brainstorm:results', {
                     detail: { sourceId: node.id, ideas, startX: node.x + 320, startY }
                   }));
-                } catch (_) {}
+                } catch (e) {
+                  alert(apiErrorMessage(e, 'Brainstorm failed.'));
+                  console.error('[brainstorm]', e);
+                }
                 setBrainstormRunning(false);
               }}
             >{brainstormRunning ? 'Running...' : 'Run'}</button>
@@ -275,6 +407,11 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       style={{ left: node.x, top: node.y }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
+      onDoubleClick={e => {
+        if (node.type !== 'chat' || chatPanelOpen) return;
+        e.stopPropagation();
+        setChatPanelOpen(true);
+      }}
     >
       <div className="node-circle" />
       {renderContent()}
