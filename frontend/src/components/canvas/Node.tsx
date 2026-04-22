@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { GraphNode } from '../../types';
 import { useGraphStore } from '../../store/graphStore';
 import { aiApi } from '../../api/client';
 import { apiErrorMessage } from '../../utils/apiError';
-import {
-  buildContextExcludingNode,
-  chatHistoryFromMeta,
-  previewChatLabel,
-} from '../../utils/graphContext';
+import { chatHistoryFromMeta, previewChatLabel } from '../../utils/graphContext';
+import ChatPanel from '../chat/ChatPanel';
 
 interface NodeProps {
   node: GraphNode;
@@ -19,7 +16,6 @@ interface NodeProps {
   onSave: () => void;
 }
 
-// ── Timer Ring Component ──────────────────────────────────────────────────────
 function TimerRing({ node, onSave }: { node: GraphNode; onSave: () => void }) {
   const total = node.meta?.seconds || 0;
   const [remaining, setRemaining] = useState(total);
@@ -30,33 +26,39 @@ function TimerRing({ node, onSave }: { node: GraphNode; onSave: () => void }) {
   const progress = total > 0 ? Math.max(0, remaining / total) : 0;
   const offset = circumference * (1 - progress);
 
-  const formatTime = (s: number) => {
-    s = Math.max(0, Math.floor(s));
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    if (h > 0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  const formatTime = (seconds: number) => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safe / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const secs = safe % 60;
+    if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+    return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
   const start = () => {
     if (running || remaining <= 0) return;
     setRunning(true);
     intervalRef.current = setInterval(() => {
-      setRemaining(r => {
-        if (r <= 1) {
+      setRemaining((value) => {
+        if (value <= 1) {
           clearInterval(intervalRef.current!);
           setRunning(false);
-          useGraphStore.setState(s => ({
-            nodes: s.nodes.map(n => n.id === node.id ? { ...n, completed: true } : n)
+          useGraphStore.setState((state) => ({
+            nodes: state.nodes.map((entry) => entry.id === node.id ? { ...entry, completed: true } : entry),
           }));
           onSave();
           return 0;
         }
-        return r - 1;
+        return value - 1;
       });
     }, 1000);
   };
 
-  useEffect(() => () => { if (intervalRef.current) clearInterval(intervalRef.current); }, []);
+  useEffect(() => () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+  }, []);
 
   const strokeColor = remaining <= 0 ? '#3b82f6' : 'url(#timerGradient)';
 
@@ -65,14 +67,17 @@ function TimerRing({ node, onSave }: { node: GraphNode; onSave: () => void }) {
       <svg viewBox="0 0 40 40">
         <defs>
           <linearGradient id="timerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#10b981"/>
-            <stop offset="50%" stopColor="#7c3aed"/>
-            <stop offset="100%" stopColor="#a78bfa"/>
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="50%" stopColor="#7c3aed" />
+            <stop offset="100%" stopColor="#a78bfa" />
           </linearGradient>
         </defs>
-        <circle className="ring-bg" cx="20" cy="20" r="16"/>
+        <circle className="ring-bg" cx="20" cy="20" r="16" />
         <circle
-          className="ring-progress" cx="20" cy="20" r="16"
+          className="ring-progress"
+          cx="20"
+          cy="20"
+          r="16"
           style={{
             strokeDasharray: circumference,
             strokeDashoffset: offset,
@@ -85,15 +90,14 @@ function TimerRing({ node, onSave }: { node: GraphNode; onSave: () => void }) {
   );
 }
 
-// ── Main Node Component ───────────────────────────────────────────────────────
 export default function Node({ node, onMoveStart, onTextChange, emitNodeText, onDelete, onSave }: NodeProps) {
   const [localText, setLocalText] = useState(node.text);
   const [localTitle, setLocalTitle] = useState(node.meta?.title || '');
   const [localTopic, setLocalTopic] = useState(node.meta?.topic || '');
   const [brainstormRunning, setBrainstormRunning] = useState(false);
-  const [chatPanelOpen, setChatPanelOpen] = useState(false);
-  const [chatBusy, setChatBusy] = useState(false);
-  const [chatDraft, setChatDraft] = useState('');
+  const activeChatNodeId = useGraphStore((state) => state.activeChatNodeId);
+  const activeChatView = useGraphStore((state) => state.activeChatView);
+  const chatPanelOpen = node.type === 'chat' && activeChatNodeId === node.id && activeChatView === 'node';
   const dimClass = `dim-${node.dim || 0}`;
 
   useEffect(() => {
@@ -122,62 +126,11 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       return;
     }
     if (!e.shiftKey) {
-      useGraphStore.setState(s => ({
-        nodes: s.nodes.map(n => n.id === node.id ? { ...n, selected: !n.selected } : n)
+      useGraphStore.setState((state) => ({
+        nodes: state.nodes.map((entry) => entry.id === node.id ? { ...entry, selected: !entry.selected } : entry),
       }));
     }
   };
-
-  const sendChatFromNode = useCallback(async () => {
-    if (node.type !== 'chat') return;
-    const trimmed = chatDraft.trim();
-    if (!trimmed || chatBusy) return;
-    const fresh = useGraphStore.getState().nodes.find(n => n.id === node.id);
-    const prior = chatHistoryFromMeta(fresh?.meta);
-    const pending = [...prior, { role: 'user' as const, content: trimmed }];
-    setChatDraft('');
-    useGraphStore.setState(s => ({
-      nodes: s.nodes.map(n =>
-        n.id === node.id
-          ? { ...n, meta: { ...n.meta, chatHistory: pending }, text: previewChatLabel(pending) }
-          : n
-      ),
-    }));
-    onSave();
-    setChatBusy(true);
-    try {
-      const transcriptBefore = pending
-        .slice(0, -1)
-        .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
-        .join('\n\n');
-      const { nodes: allNodes, lastNodeId } = useGraphStore.getState();
-      const canvasCtx = buildContextExcludingNode(node.id, allNodes, lastNodeId);
-      const parts: string[] = [];
-      if (canvasCtx) parts.push('Canvas reference:\n' + canvasCtx);
-      if (transcriptBefore) parts.push('Earlier in this chat:\n' + transcriptBefore);
-      const context = parts.join('\n---\n');
-      const r = await aiApi.chat(trimmed, context);
-      const after = [...pending, { role: 'assistant' as const, content: r.data.reply || '' }];
-      useGraphStore.setState(s => ({
-        nodes: s.nodes.map(n =>
-          n.id === node.id
-            ? { ...n, meta: { ...n.meta, chatHistory: after }, text: previewChatLabel(after) }
-            : n
-        ),
-      }));
-      onSave();
-    } catch (e) {
-      alert(apiErrorMessage(e, 'Chat failed.'));
-      useGraphStore.setState(s => ({
-        nodes: s.nodes.map(n =>
-          n.id === node.id ? { ...n, meta: { ...n.meta, chatHistory: prior }, text: previewChatLabel(prior) } : n
-        ),
-      }));
-      onSave();
-    } finally {
-      setChatBusy(false);
-    }
-  }, [node.type, node.id, chatDraft, chatBusy, onSave]);
 
   const typeClass = `node-${node.type}`;
   const selectedClass = node.selected ? 'selected' : '';
@@ -193,8 +146,13 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
             <div className="bubble-header">
               <button
                 className="copy-btn"
-                onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(node.text || '').catch(() => {}); }}
-              >Copy</button>
+                onClick={e => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(node.text || '').catch(() => {});
+                }}
+              >
+                Copy
+              </button>
             </div>
             <div
               contentEditable
@@ -208,7 +166,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
               }}
               onBlur={onSave}
               style={{ outline: 'none', minWidth: '50px' }}
-            >{localText}</div>
+            >
+              {localText}
+            </div>
           </div>
         </div>
       );
@@ -230,22 +190,24 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
           <div className="note-wrap">
             <input
               className="note-title"
-              placeholder="Title…"
+              placeholder="Title..."
               value={localTitle}
               data-node-id={node.id}
               onMouseDown={e => { if (document.activeElement === e.target) e.stopPropagation(); }}
               onClick={e => { e.stopPropagation(); (e.target as HTMLElement).focus(); }}
               onChange={e => {
                 setLocalTitle(e.target.value);
-                useGraphStore.setState(s => ({
-                  nodes: s.nodes.map(n => n.id === node.id ? { ...n, meta: { ...n.meta, title: e.target.value } } : n)
+                useGraphStore.setState((state) => ({
+                  nodes: state.nodes.map((entry) =>
+                    entry.id === node.id ? { ...entry, meta: { ...entry.meta, title: e.target.value } } : entry
+                  ),
                 }));
               }}
               onBlur={onSave}
             />
             <textarea
               className="note-body"
-              placeholder="Write anything…"
+              placeholder="Write anything..."
               value={localText}
               style={{ width, height }}
               data-node-id={node.id}
@@ -280,55 +242,14 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       }
 
       return (
-        <div className="node-text" onMouseDown={e => e.stopPropagation()}>
-          <div className="chat-wrap bubble">
-            <div className="chat-wrap-head">
-              <button type="button" className="chat-wrap-btn" onClick={() => setChatPanelOpen(false)}>Close</button>
-              <button
-                type="button"
-                className="chat-wrap-btn"
-                disabled={chatBusy || !history.length}
-                onClick={() => {
-                  useGraphStore.setState(s => ({
-                    nodes: s.nodes.map(n =>
-                      n.id === node.id ? { ...n, meta: { ...n.meta, chatHistory: [] }, text: 'New chat' } : n
-                    ),
-                  }));
-                  onSave();
-                }}
-              >
-                Clear
-              </button>
-            </div>
-            <div className="chat-wrap-msgs">
-              {history.map((m, i) => (
-                <div key={i} className={`chat-wrap-line chat-wrap-${m.role}`}>
-                  <span className="chat-wrap-role">{m.role === 'user' ? 'You' : 'Model'}</span>
-                  <span className="chat-wrap-txt">{m.content}</span>
-                </div>
-              ))}
-              {chatBusy && <div className="chat-wrap-line chat-wrap-assistant muted">…</div>}
-            </div>
-            <div className="chat-wrap-inputrow">
-              <textarea
-                className="chat-wrap-input"
-                rows={2}
-                placeholder="Message…"
-                value={chatDraft}
-                disabled={chatBusy}
-                onChange={e => setChatDraft(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendChatFromNode();
-                  }
-                }}
-              />
-              <button type="button" className="chat-wrap-send" disabled={chatBusy || !chatDraft.trim()} onClick={() => void sendChatFromNode()}>
-                ↑
-              </button>
-            </div>
-          </div>
+        <div className="node-text">
+          <ChatPanel
+            nodeId={node.id}
+            mode="node"
+            onSave={onSave}
+            onClose={() => useGraphStore.getState().setActiveChat(null, 'node')}
+            onSwitchMode={() => useGraphStore.getState().setActiveChat(node.id, 'sidebar')}
+          />
         </div>
       );
     }
@@ -346,8 +267,10 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
               onClick={e => { e.stopPropagation(); (e.target as HTMLElement).focus(); }}
               onChange={e => {
                 setLocalTopic(e.target.value);
-                useGraphStore.setState(s => ({
-                  nodes: s.nodes.map(n => n.id === node.id ? { ...n, meta: { ...n.meta, topic: e.target.value } } : n)
+                useGraphStore.setState((state) => ({
+                  nodes: state.nodes.map((entry) =>
+                    entry.id === node.id ? { ...entry, meta: { ...entry.meta, topic: e.target.value } } : entry
+                  ),
                 }));
               }}
               onKeyDown={e => e.stopPropagation()}
@@ -362,26 +285,26 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
                 if (!topic) return;
                 setBrainstormRunning(true);
                 try {
-                  const r = await aiApi.brainstorm(topic);
-                  const ideas = r.data.nodes || [];
+                  const response = await aiApi.brainstorm(topic);
+                  const ideas = response.data.nodes || [];
                   const startY = node.y - ((ideas.length - 1) * 70) / 2;
-                  // Dispatch event so CanvasPage can handle node creation
                   window.dispatchEvent(new CustomEvent('brainstorm:results', {
-                    detail: { sourceId: node.id, ideas, startX: node.x + 320, startY }
+                    detail: { sourceId: node.id, ideas, startX: node.x + 320, startY },
                   }));
-                } catch (e) {
-                  alert(apiErrorMessage(e, 'Brainstorm failed.'));
-                  console.error('[brainstorm]', e);
+                } catch (error) {
+                  alert(apiErrorMessage(error, 'Brainstorm failed.'));
+                  console.error('[brainstorm]', error);
                 }
                 setBrainstormRunning(false);
               }}
-            >{brainstormRunning ? 'Running...' : 'Run'}</button>
+            >
+              {brainstormRunning ? 'Running...' : 'Run'}
+            </button>
           </div>
         </div>
       );
     }
 
-    // question / default
     return (
       <div
         className="node-text"
@@ -396,7 +319,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
         }}
         onBlur={onSave}
         style={{ outline: 'none', minWidth: '50px' }}
-      >{localText}</div>
+      >
+        {localText}
+      </div>
     );
   };
 
@@ -410,7 +335,7 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       onDoubleClick={e => {
         if (node.type !== 'chat' || chatPanelOpen) return;
         e.stopPropagation();
-        setChatPanelOpen(true);
+        useGraphStore.getState().setActiveChat(node.id, 'node');
       }}
     >
       <div className="node-circle" />

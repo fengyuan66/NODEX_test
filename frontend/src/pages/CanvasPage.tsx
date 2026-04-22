@@ -17,6 +17,7 @@ import PresenceBar from '../components/presence/PresenceBar';
 import SettingsModal from '../components/ui/modals/SettingsModal';
 import ShareModal from '../components/ui/modals/ShareModal';
 import DashboardModal from '../components/ui/modals/DashboardModal';
+import ChatPanel from '../components/chat/ChatPanel';
 
 import type { PresenceUser } from '../types';
 import { apiErrorMessage } from '../utils/apiError';
@@ -45,6 +46,8 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
     linkSelectedNodes, splitSelectedLinks, autoLayout, getSmartSpawnPos,
     createGroup, updateGroup
   } = useGraph();
+  const activeChatNodeId = useGraphStore((state) => state.activeChatNodeId);
+  const activeChatView = useGraphStore((state) => state.activeChatView);
 
   useSocket({ shareId: isShared ? shareId : undefined, onPresenceUpdate: setPresenceUsers });
   useKeyboard(linkSelectedNodes, splitSelectedLinks, () => triggerGroupUI());
@@ -94,7 +97,8 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
   }, []);
 
   const handleNewChatNode = useCallback(() => {
-    addNode('chat', 'New chat', undefined, undefined, { chatHistory: [] });
+    const chatNode = addNode('chat', 'New chat', undefined, undefined, { chatHistory: [] });
+    useGraphStore.getState().setActiveChat(chatNode.id, 'node');
   }, [addNode]);
 
   const [colorPicker, setColorPicker] = useState<{ x: number; y: number; editGroupId?: number; initialColor?: string; initialName?: string } | null>(null);
@@ -327,6 +331,17 @@ export default function CanvasPage({ isShared }: CanvasPageProps) {
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showShare && <ShareModal shareId={isShared ? (shareId || null) : ownShareId} onClose={() => setShowShare(false)} />}
       {showDashboard && <DashboardModal onClose={() => setShowDashboard(false)} />}
+      {activeChatNodeId !== null && activeChatView === 'sidebar' && (
+        <div className="chat-sidebar-shell">
+          <ChatPanel
+            nodeId={activeChatNodeId}
+            mode="sidebar"
+            onSave={saveGraph}
+            onClose={() => useGraphStore.getState().setActiveChat(null, 'sidebar')}
+            onSwitchMode={() => useGraphStore.getState().setActiveChat(activeChatNodeId, 'node')}
+          />
+        </div>
+      )}
     </div>
   );
 }

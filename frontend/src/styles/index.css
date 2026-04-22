@@ -266,6 +266,17 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .chat-compact-body{font-size:11px;line-height:1.35;color:var(--text);white-space:pre-wrap;word-break:break-word;}
 
 .chat-wrap{width:min(320px,72vw);max-width:360px;}
+.chat-sidebar-shell{
+  position:fixed;top:72px;right:14px;bottom:18px;z-index:1200;
+  width:min(420px,calc(100vw - 28px));pointer-events:none;
+}
+.chat-sidebar-panel{
+  width:100%;height:100%;display:flex;flex-direction:column;
+  background:rgba(13,13,26,0.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid rgba(34,211,238,0.35);border-radius:18px;padding:14px;
+  box-shadow:0 16px 48px rgba(0,0,0,0.55),0 0 0 1px rgba(34,211,238,0.12);
+  pointer-events:auto;
+}
 .chat-wrap-head{display:flex;gap:6px;justify-content:flex-end;margin-bottom:6px;}
 .chat-wrap-btn{
   background:var(--surface);border:1px solid var(--border2);color:var(--muted2);
@@ -276,6 +287,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;
   font-size:10px;line-height:1.4;
 }
+.chat-sidebar-panel .chat-wrap-msgs{flex:1;max-height:none;padding-right:2px;}
 .chat-wrap-line{display:flex;flex-direction:column;gap:2px;}
 .chat-wrap-role{font-size:8px;color:var(--muted2);text-transform:uppercase;}
 .chat-wrap-txt{white-space:pre-wrap;word-break:break-word;color:var(--text);}
@@ -286,12 +298,19 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   color:var(--text);font-family:inherit;font-size:10px;padding:6px 8px;outline:none;min-height:40px;max-height:100px;
 }
 .chat-wrap-input:focus{border-color:#22d3ee;}
+.chat-sidebar-panel .chat-wrap-input{min-height:84px;max-height:180px;}
 .chat-wrap-send{
   width:30px;height:30px;border-radius:50%;border:none;background:var(--text);color:var(--bg);
   font-weight:bold;cursor:pointer;font-family:inherit;font-size:14px;flex-shrink:0;
 }
 .chat-wrap-send:hover:not(:disabled){background:#22d3ee;color:#000;}
 .chat-wrap-send:disabled{opacity:.4;cursor:default;}
+
+@media (max-width: 900px){
+  .chat-sidebar-shell{
+    top:auto;left:12px;right:12px;bottom:110px;width:auto;height:min(55vh,460px);
+  }
+}
 
 #zoom-controls{
   position:fixed;bottom:124px;right:14px;display:flex;flex-direction:column;gap:4px;z-index:200;

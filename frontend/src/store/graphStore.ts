@@ -11,6 +11,8 @@ interface GraphState {
   nextLinkId: number;
   nextGroupId: number;
   currentScale: number;
+  activeChatNodeId: number | null;
+  activeChatView: 'node' | 'sidebar';
   undoStack: string[];
   redoStack: string[];
   lastNodeId: number | null;
@@ -21,6 +23,7 @@ interface GraphState {
   setLinks: (links: Link[]) => void;
   setGroups: (groups: Group[]) => void;
   setScale: (scale: number) => void;
+  setActiveChat: (nodeId: number | null, view?: 'node' | 'sidebar') => void;
   setLastNodeId: (id: number | null) => void;
   setExplicitlyDeselected: (b: boolean) => void;
   pushUndo: () => void;
@@ -37,6 +40,8 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   nextLinkId: 1,
   nextGroupId: 1,
   currentScale: 1,
+  activeChatNodeId: null,
+  activeChatView: 'node',
   undoStack: [],
   redoStack: [],
   lastNodeId: null,
@@ -55,6 +60,10 @@ export const useGraphStore = create<GraphState>((set, get) => ({
   setLinks: (links) => set({ links }),
   setGroups: (groups) => set({ groups }),
   setScale: (scale) => set({ currentScale: scale }),
+  setActiveChat: (nodeId, view = 'node') => set({
+    activeChatNodeId: nodeId,
+    activeChatView: view,
+  }),
   setLastNodeId: (id) => set({ lastNodeId: id }),
   setExplicitlyDeselected: (b) => set({ explicitlyDeselected: b }),
 
