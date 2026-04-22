@@ -19,6 +19,8 @@ export interface GraphNode {
     chatHistory?: SidebarChatMessage[];
     /** Last non-chat type before this node was converted into a chat node */
     frozenFromType?: Exclude<GraphNode['type'], 'chat'>;
+    /** Full preserved transcript after freezing a chat back into a regular node */
+    frozenChatHistory?: SidebarChatMessage[];
   };
 }
 

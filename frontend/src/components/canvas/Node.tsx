@@ -3,7 +3,7 @@ import type { GraphNode } from '../../types';
 import { useGraphStore } from '../../store/graphStore';
 import { aiApi } from '../../api/client';
 import { apiErrorMessage } from '../../utils/apiError';
-import { chatHistoryFromMeta, previewChatLabel } from '../../utils/graphContext';
+import { chatHistoryFromMeta, nodeTextForContext, previewChatLabel } from '../../utils/graphContext';
 import ChatPanel from '../chat/ChatPanel';
 
 interface NodeProps {
@@ -163,7 +163,7 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
                 className="copy-btn"
                 onClick={e => {
                   e.stopPropagation();
-                  navigator.clipboard.writeText(node.text || '').catch(() => {});
+                  navigator.clipboard.writeText(nodeTextForContext(node)).catch(() => {});
                 }}
               >
                 Copy
