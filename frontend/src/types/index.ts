@@ -17,6 +17,8 @@ export interface GraphNode {
     label?: string;
     /** Linear chat thread stored on canvas chat nodes */
     chatHistory?: SidebarChatMessage[];
+    /** Last non-chat type before this node was converted into a chat node */
+    frozenFromType?: Exclude<GraphNode['type'], 'chat'>;
   };
 }
 

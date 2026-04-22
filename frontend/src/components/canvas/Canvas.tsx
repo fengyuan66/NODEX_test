@@ -19,7 +19,7 @@ const MERGE_THRESHOLD = 60;
 export default function Canvas({ shareId }: CanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { nodes, groups, currentScale } = useGraphStore();
-  const { updateNode, deleteNode, deleteLink, addLink, mergeNodes, selectNode, deselectAll, addNodeToGroup, updateGroup, saveGraph } = useGraph();
+  const { updateNode, deleteNode, deleteLink, addLink, mergeNodes, selectNode, deselectAll, addNodeToGroup, updateGroup, saveGraph, toggleNodeChatMode } = useGraph();
   const { applyZoom, smartRecenter, clientToCanvas, initCanvas, CANVAS_W, CANVAS_H } = useCanvas(wrapperRef);
   const { emitNodeMove, emitNodeText, emitCursorMove } = useSocket({ shareId });
 
@@ -334,6 +334,7 @@ export default function Canvas({ shareId }: CanvasProps) {
               emitNodeText={emitNodeText}
               onDelete={deleteNode}
               onAddLink={addLink}
+              onToggleChat={toggleNodeChatMode}
               onSave={saveGraph}
             />
           ))}

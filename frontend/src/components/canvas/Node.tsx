@@ -13,6 +13,7 @@ interface NodeProps {
   emitNodeText?: (id: number, text: string) => void;
   onDelete: (id: number) => void;
   onAddLink: (sourceId: number, targetId: number) => void;
+  onToggleChat: (id: number) => void;
   onSave: () => void;
 }
 
@@ -90,7 +91,7 @@ function TimerRing({ node, onSave }: { node: GraphNode; onSave: () => void }) {
   );
 }
 
-export default function Node({ node, onMoveStart, onTextChange, emitNodeText, onDelete, onSave }: NodeProps) {
+export default function Node({ node, onMoveStart, onTextChange, emitNodeText, onDelete, onToggleChat, onSave }: NodeProps) {
   const [localText, setLocalText] = useState(node.text);
   const [localTitle, setLocalTitle] = useState(node.meta?.title || '');
   const [localTopic, setLocalTopic] = useState(node.meta?.topic || '');
@@ -135,6 +136,19 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
   const typeClass = `node-${node.type}`;
   const selectedClass = node.selected ? 'selected' : '';
   const completedClass = node.completed ? 'completed' : '';
+  const modeButton = (
+    <button
+      type="button"
+      className="copy-btn"
+      onMouseDown={e => e.stopPropagation()}
+      onClick={e => {
+        e.stopPropagation();
+        onToggleChat(node.id);
+      }}
+    >
+      {node.type === 'chat' ? 'Freeze' : 'Chat'}
+    </button>
+  );
 
   const renderContent = () => {
     if (node.type === 'answer') {
@@ -144,6 +158,7 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
         <div className="node-text">
           <div className="bubble" style={{ width, height }}>
             <div className="bubble-header">
+              {modeButton}
               <button
                 className="copy-btn"
                 onClick={e => {
@@ -178,6 +193,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       return (
         <div className="node-text">
           <TimerRing node={node} onSave={onSave} />
+          <div className="node-inline-actions">
+            {modeButton}
+          </div>
         </div>
       );
     }
@@ -188,6 +206,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       return (
         <div className="node-text">
           <div className="note-wrap">
+            <div className="node-inline-actions">
+              {modeButton}
+            </div>
             <input
               className="note-title"
               placeholder="Title..."
@@ -234,6 +255,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
         return (
           <div className="node-text" title="Double-click node to open chat">
             <div className="chat-compact bubble">
+              <div className="bubble-header">
+                {modeButton}
+              </div>
               <div className="chat-compact-hint">Double-click to continue</div>
               <div className="chat-compact-body">{label}</div>
             </div>
@@ -243,6 +267,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
 
       return (
         <div className="node-text">
+          <div className="node-inline-actions">
+            {modeButton}
+          </div>
           <ChatPanel
             nodeId={node.id}
             mode="node"
@@ -258,6 +285,9 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
       return (
         <div className="node-text">
           <div className="brainstorm-wrap">
+            <div className="node-inline-actions">
+              {modeButton}
+            </div>
             <textarea
               className="brainstorm-input"
               placeholder="Topic..."
@@ -306,21 +336,25 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
     }
 
     return (
-      <div
-        className="node-text"
-        contentEditable
-        suppressContentEditableWarning
-        data-node-id={node.id}
-        onInput={e => {
-          const text = e.currentTarget.innerText;
-          setLocalText(text);
-          onTextChange(node.id, text);
-          if (emitNodeText) emitNodeText(node.id, text);
-        }}
-        onBlur={onSave}
-        style={{ outline: 'none', minWidth: '50px' }}
-      >
-        {localText}
+      <div className="node-text">
+        <div className="node-inline-actions">
+          {modeButton}
+        </div>
+        <div
+          contentEditable
+          suppressContentEditableWarning
+          data-node-id={node.id}
+          onInput={e => {
+            const text = e.currentTarget.innerText;
+            setLocalText(text);
+            onTextChange(node.id, text);
+            if (emitNodeText) emitNodeText(node.id, text);
+          }}
+          onBlur={onSave}
+          style={{ outline: 'none', minWidth: '50px' }}
+        >
+          {localText}
+        </div>
       </div>
     );
   };

@@ -88,6 +88,69 @@ export function useGraph() {
     }));
   }, []);
 
+  const toggleNodeChatMode = useCallback((id: number) => {
+    const { nodes } = useGraphStore.getState();
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+
+    store.pushUndo();
+
+    if (node.type === 'chat') {
+      const history = Array.isArray(node.meta?.chatHistory) ? node.meta.chatHistory : [];
+      const frozenText = [...history]
+        .reverse()
+        .find(entry => typeof entry?.content === 'string' && entry.content.trim())?.content
+        ?? node.text
+        ?? '';
+      const nextType = node.meta?.frozenFromType ?? 'answer';
+
+      useGraphStore.setState(s => ({
+        nodes: s.nodes.map(entry =>
+          entry.id === id
+            ? {
+                ...entry,
+                type: nextType,
+                text: frozenText,
+                meta: {
+                  ...entry.meta,
+                  frozenFromType: undefined,
+                },
+              }
+            : entry
+        ),
+      }));
+
+      const { activeChatNodeId } = useGraphStore.getState();
+      if (activeChatNodeId === id) {
+        useGraphStore.getState().setActiveChat(null, 'node');
+      }
+    } else {
+      const seed = (node.text || '').trim();
+      const frozenFromType = node.type;
+      const seededHistory = seed ? [{ role: 'user' as const, content: seed }] : [];
+
+      useGraphStore.setState(s => ({
+        nodes: s.nodes.map(entry =>
+          entry.id === id
+            ? {
+                ...entry,
+                type: 'chat',
+                text: seed || 'New chat',
+                meta: {
+                  ...entry.meta,
+                  frozenFromType,
+                  chatHistory: seededHistory,
+                },
+              }
+            : entry
+        ),
+      }));
+      useGraphStore.getState().setActiveChat(id, 'node');
+    }
+
+    void saveGraph();
+  }, [store, saveGraph]);
+
   const deleteNode = useCallback((id: number) => {
     store.pushUndo();
     useGraphStore.setState(s => ({
@@ -326,7 +389,7 @@ export function useGraph() {
     saveGraph, addNode, updateNode, deleteNode, addLink, deleteLink,
     mergeNodes, createGroup, deleteGroup, updateGroup, addNodeToGroup,
     collapseGroup, expandGroup, linkSelectedNodes, splitSelectedLinks,
-    selectNode, deselectAll, dimAllNodes, getSmartSpawnPos, autoLayout,
+    selectNode, deselectAll, dimAllNodes, getSmartSpawnPos, autoLayout, toggleNodeChatMode,
     GROUP_COLORS,
   };
 }

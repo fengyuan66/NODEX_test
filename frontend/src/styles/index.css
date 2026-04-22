@@ -118,6 +118,7 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
   position:relative;overflow-y:auto;overflow-wrap:anywhere;
 }
 .bubble-header{display:flex;justify-content:flex-end;margin-bottom:4px;}
+.node-inline-actions{display:flex;justify-content:flex-end;gap:6px;margin-bottom:4px;}
 .copy-btn{
   background:var(--surface);border:1px solid var(--border2);color:var(--muted2);
   font-size:10px;padding:2px 6px;border-radius:999px;cursor:pointer;
