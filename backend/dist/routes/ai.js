@@ -10,7 +10,7 @@ router.post('/classify', requireAuth_1.requireAuth, async (req, res) => {
         res.json(result);
     }
     catch (e) {
-        res.status(500).json({ error: String(e) });
+        res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
     }
 });
 router.post('/chat', requireAuth_1.requireAuth, async (req, res) => {
@@ -19,7 +19,7 @@ router.post('/chat', requireAuth_1.requireAuth, async (req, res) => {
         res.json({ reply });
     }
     catch (e) {
-        res.status(500).json({ error: String(e) });
+        res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
     }
 });
 router.post('/suggest', requireAuth_1.requireAuth, async (req, res) => {
@@ -27,7 +27,8 @@ router.post('/suggest', requireAuth_1.requireAuth, async (req, res) => {
         const suggestions = await (0, groq_1.suggestWithGroq)(req.body.prompt || '', req.body.context || '');
         res.json({ suggestions });
     }
-    catch (_) {
+    catch (e) {
+        console.warn('[ai/suggest]', e);
         res.json({ suggestions: [] });
     }
 });
@@ -37,7 +38,7 @@ router.post('/merge', requireAuth_1.requireAuth, async (req, res) => {
         res.json({ merged });
     }
     catch (e) {
-        res.status(500).json({ error: String(e) });
+        res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
     }
 });
 router.post('/find', requireAuth_1.requireAuth, async (req, res) => {
@@ -54,8 +55,8 @@ router.post('/brainstorm', requireAuth_1.requireAuth, async (req, res) => {
         const nodes = await (0, groq_1.brainstormWithGroq)(req.body.topic || '');
         res.json({ nodes });
     }
-    catch (_) {
-        res.json({ nodes: [] });
+    catch (e) {
+        res.status(500).json({ error: e instanceof Error ? e.message : String(e) });
     }
 });
 exports.default = router;

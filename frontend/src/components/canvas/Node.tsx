@@ -5,6 +5,7 @@ import { aiApi } from '../../api/client';
 import { apiErrorMessage } from '../../utils/apiError';
 import { chatHistoryFromMeta, previewChatLabel } from '../../utils/graphContext';
 import ChatPanel from '../chat/ChatPanel';
+import LinkedText from '../ui/LinkedText';
 
 interface NodeProps {
   node: GraphNode;
@@ -95,6 +96,7 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
   const [localText, setLocalText] = useState(node.text);
   const [localTitle, setLocalTitle] = useState(node.meta?.title || '');
   const [localTopic, setLocalTopic] = useState(node.meta?.topic || '');
+  const [answerEditing, setAnswerEditing] = useState(false);
   const [brainstormRunning, setBrainstormRunning] = useState(false);
   const activeChatNodeId = useGraphStore((state) => state.activeChatNodeId);
   const activeChatView = useGraphStore((state) => state.activeChatView);
@@ -109,10 +111,14 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
     }
   }, [node.text, node.meta, node.id]);
 
+  useEffect(() => {
+    if (node.type !== 'answer') setAnswerEditing(false);
+  }, [node.id, node.type]);
+
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
-    if (target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
+    if (target.tagName === 'BUTTON' || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT' || target.tagName === 'A') {
       if (document.activeElement === target) return;
     }
     if (target.classList.contains('group-resize-handle')) return;
@@ -161,6 +167,17 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
               {modeButton}
               <button
                 className="copy-btn"
+                onMouseDown={e => e.stopPropagation()}
+                onClick={e => {
+                  e.stopPropagation();
+                  setAnswerEditing((value) => !value);
+                }}
+              >
+                {answerEditing ? 'Done' : 'Edit'}
+              </button>
+              <button
+                className="copy-btn"
+                onMouseDown={e => e.stopPropagation()}
                 onClick={e => {
                   e.stopPropagation();
                   navigator.clipboard.writeText(node.text || '').catch(() => {});
@@ -169,21 +186,36 @@ export default function Node({ node, onMoveStart, onTextChange, emitNodeText, on
                 Copy
               </button>
             </div>
-            <div
-              contentEditable
-              suppressContentEditableWarning
-              data-node-id={node.id}
-              onInput={e => {
-                const text = e.currentTarget.innerText;
-                setLocalText(text);
-                onTextChange(node.id, text);
-                if (emitNodeText) emitNodeText(node.id, text);
-              }}
-              onBlur={onSave}
-              style={{ outline: 'none', minWidth: '50px' }}
-            >
-              {localText}
-            </div>
+            {answerEditing ? (
+              <div
+                contentEditable
+                suppressContentEditableWarning
+                data-node-id={node.id}
+                onInput={e => {
+                  const text = e.currentTarget.innerText;
+                  setLocalText(text);
+                  onTextChange(node.id, text);
+                  if (emitNodeText) emitNodeText(node.id, text);
+                }}
+                onBlur={() => {
+                  onSave();
+                  setAnswerEditing(false);
+                }}
+                style={{ outline: 'none', minWidth: '50px' }}
+              >
+                {localText}
+              </div>
+            ) : (
+              <div
+                className="answer-rich-text"
+                onDoubleClick={e => {
+                  e.stopPropagation();
+                  setAnswerEditing(true);
+                }}
+              >
+                <LinkedText text={localText} className="node-linked-text" />
+              </div>
+            )}
           </div>
         </div>
       );

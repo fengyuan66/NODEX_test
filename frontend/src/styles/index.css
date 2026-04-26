@@ -293,6 +293,21 @@ body{margin:0;padding:0;background:var(--bg);color:var(--text);
 .chat-wrap-role{font-size:8px;color:var(--muted2);text-transform:uppercase;}
 .chat-wrap-txt{white-space:pre-wrap;word-break:break-word;color:var(--text);}
 .chat-wrap-user .chat-wrap-txt{color:#e0f2fe;}
+.inline-source-link{
+  color:#67e8f9;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  margin:0 2px;
+}
+.inline-source-link:hover{color:#a5f3fc;}
+.answer-rich-text{
+  min-width:50px;
+  cursor:text;
+}
+.node-linked-text{
+  white-space:pre-wrap;
+  word-break:break-word;
+}
 .chat-wrap-inputrow{display:flex;gap:6px;align-items:flex-end;}
 .chat-wrap-input{
   flex:1;resize:none;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;

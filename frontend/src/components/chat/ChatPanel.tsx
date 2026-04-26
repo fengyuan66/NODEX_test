@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { aiApi } from '../../api/client';
 import { useGraphStore } from '../../store/graphStore';
 import { apiErrorMessage } from '../../utils/apiError';
+import LinkedText from '../ui/LinkedText';
 import {
   buildContextExcludingNode,
   chatHistoryFromMeta,
@@ -111,7 +112,11 @@ export default function ChatPanel({ nodeId, mode, onSave, onClose, onSwitchMode 
         {history.map((message, index) => (
           <div key={index} className={`chat-wrap-line chat-wrap-${message.role}`}>
             <span className="chat-wrap-role">{message.role === 'user' ? 'You' : 'Model'}</span>
-            <span className="chat-wrap-txt">{message.content}</span>
+            <LinkedText
+              text={message.content}
+              className="chat-wrap-txt"
+              sourceLabel={message.role === 'assistant'}
+            />
           </div>
         ))}
         {chatBusy && <div className="chat-wrap-line chat-wrap-assistant muted">...</div>}
