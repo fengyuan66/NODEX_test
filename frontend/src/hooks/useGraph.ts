@@ -1,8 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useGraphStore } from '../store/graphStore';
 import { graphApi } from '../api/client';
-import type { GraphNode, Link, Group, SidebarChatMessage } from '../types';
-import { chatHistoryFromMeta, previewChatLabel } from '../utils/graphContext';
+import type { GraphNode, Link, Group } from '../types';
 
 const ORIGIN_X = 3000;
 const ORIGIN_Y = 3000;
@@ -97,11 +96,10 @@ export function useGraph() {
     store.pushUndo();
 
     if (node.type === 'chat') {
-      const history = chatHistoryFromMeta(node.meta);
-      const previewText = [...history]
+      const history = Array.isArray(node.meta?.chatHistory) ? node.meta.chatHistory : [];
+      const frozenText = [...history]
         .reverse()
-        .find(entry => entry.role === 'assistant' && entry.content.trim())?.content
-        ?? [...history].reverse().find(entry => entry.content.trim())?.content
+        .find(entry => typeof entry?.content === 'string' && entry.content.trim())?.content
         ?? node.text
         ?? '';
       const nextType = node.meta?.frozenFromType ?? 'answer';
@@ -112,11 +110,10 @@ export function useGraph() {
             ? {
                 ...entry,
                 type: nextType,
-                text: previewText,
+                text: frozenText,
                 meta: {
                   ...entry.meta,
                   frozenFromType: undefined,
-                  frozenChatHistory: history,
                 },
               }
             : entry
@@ -128,19 +125,9 @@ export function useGraph() {
         useGraphStore.getState().setActiveChat(null, 'node');
       }
     } else {
-      const restoredHistory = Array.isArray(node.meta?.frozenChatHistory)
-        ? node.meta.frozenChatHistory.filter(
-            (entry): entry is SidebarChatMessage =>
-              !!entry &&
-              (entry.role === 'user' || entry.role === 'assistant') &&
-              typeof entry.content === 'string'
-          )
-        : [];
       const seed = (node.text || '').trim();
       const frozenFromType = node.type;
-      const seededHistory = restoredHistory.length
-        ? restoredHistory
-        : seed ? [{ role: 'user' as const, content: seed }] : [];
+      const seededHistory = seed ? [{ role: 'user' as const, content: seed }] : [];
 
       useGraphStore.setState(s => ({
         nodes: s.nodes.map(entry =>
@@ -148,7 +135,7 @@ export function useGraph() {
             ? {
                 ...entry,
                 type: 'chat',
-                text: previewChatLabel(seededHistory),
+                text: seed || 'New chat',
                 meta: {
                   ...entry.meta,
                   frozenFromType,

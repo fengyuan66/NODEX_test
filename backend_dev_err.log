@@ -1,0 +1,49 @@
+(node:43828) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created)
+AggregateError [ETIMEDOUT]: 
+    at C:\Users\Harry\Documents\NW\NODEX_test\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async initSchema (C:\Users\Harry\Documents\NW\NODEX_test\backend\src\db\pool.ts:10:18)
+    at async start (C:\Users\Harry\Documents\NW\NODEX_test\backend\src\index.ts:22:3) {
+  code: 'ETIMEDOUT',
+  [errors]: [
+    Error: connect ETIMEDOUT 44.240.112.28:5432
+        at createConnectionError (node:net:1677:14)
+        at Timeout.internalConnectMultipleTimeout (node:net:1736:38)
+        at listOnTimeout (node:internal/timers:590:11)
+        at process.processTimers (node:internal/timers:523:7) {
+      errno: -4039,
+      code: 'ETIMEDOUT',
+      syscall: 'connect',
+      address: '44.240.112.28',
+      port: 5432
+    },
+    Error: connect ETIMEDOUT 100.20.233.178:5432
+        at createConnectionError (node:net:1677:14)
+        at Timeout.internalConnectMultipleTimeout (node:net:1736:38)
+        at listOnTimeout (node:internal/timers:590:11)
+        at process.processTimers (node:internal/timers:523:7) {
+      errno: -4039,
+      code: 'ETIMEDOUT',
+      syscall: 'connect',
+      address: '100.20.233.178',
+      port: 5432
+    },
+    Error: connect ETIMEDOUT 44.236.37.42:5432
+        at createConnectionError (node:net:1677:14)
+        at afterConnectMultiple (node:net:1707:16) {
+      errno: -4039,
+      code: 'ETIMEDOUT',
+      syscall: 'connect',
+      address: '44.236.37.42',
+      port: 5432
+    }
+  ]
+}

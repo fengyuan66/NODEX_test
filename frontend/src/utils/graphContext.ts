@@ -6,18 +6,6 @@ export function chatHistoryFromMeta(meta: GraphNode['meta'] | undefined): Sideba
   return h.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string');
 }
 
-export function frozenChatHistoryFromMeta(meta: GraphNode['meta'] | undefined): SidebarChatMessage[] {
-  const h = meta?.frozenChatHistory;
-  if (!Array.isArray(h)) return [];
-  return h.filter(m => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string');
-}
-
-export function formatChatTranscript(history: SidebarChatMessage[]): string {
-  return history
-    .map((message) => `${message.role === 'user' ? 'User' : 'Assistant'}: ${message.content}`)
-    .join('\n\n');
-}
-
 export function previewChatLabel(history: SidebarChatMessage[]): string {
   if (!history.length) return 'New chat';
   const last = history[history.length - 1];
@@ -30,13 +18,9 @@ export function nodeTextForContext(n: GraphNode): string {
   if (n.type === 'chat') {
     const hist = chatHistoryFromMeta(n.meta);
     if (hist.length) {
-      return `Chat:\n${formatChatTranscript(hist)}`;
+      return `Chat:\n${hist.map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n\n')}`;
     }
     return '(empty chat)';
-  }
-  const frozenHistory = frozenChatHistoryFromMeta(n.meta);
-  if (frozenHistory.length) {
-    return `Chat:\n${formatChatTranscript(frozenHistory)}`;
   }
   return n.text || '';
 }

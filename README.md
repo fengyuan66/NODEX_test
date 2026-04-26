@@ -45,6 +45,13 @@ Optional backend env vars:
 
 - `GROQ_MODEL` - overrides the default Groq model
 - `GROQ_DEBUG_PRINT_FULL_KEY=1` - local debugging only
+- `WEB_SEARCH_ENABLED` - enable/disable chat web-search planning (default: `true`)
+- `WEB_SEARCH_MAX_RESULTS` - number of search snippets to pass to the model (default: `3`, max: `6`)
+- `WEB_SEARCH_TIMEOUT_MS` - timeout for web-search HTTP requests (default: `12000`)
+- `WEB_SEARCH_DECIDER` - `heuristic` (default, no extra model call) or `model`
+- `WEB_SEARCH_DEBUG` - set `1` to log web-search decisions/results in backend console
+- `GROQ_CHAT_MAX_TOKENS` - max output tokens for chat responses (default: `700`)
+- `CHAT_CONTEXT_MAX_CHARS` - max context characters forwarded to chat (default: `3000`)
 
 `backend/.env` is the canonical env file for this app. The backend will also read a repo-root `.env`, but only for missing values.
 
